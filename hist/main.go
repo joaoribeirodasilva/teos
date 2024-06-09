@@ -3,16 +3,16 @@ package main
 import (
 	"os"
 
-	"github.com/joaoribeirodasilva/teos/auth/routes"
 	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/info"
 	"github.com/joaoribeirodasilva/teos/common/server"
+	"github.com/joaoribeirodasilva/teos/hist/routes"
 )
 
 const (
-	SERVICE_NAME = "auth"
+	SERVICE_NAME = "hists"
 	VERSION      = "0.0.1"
 )
 

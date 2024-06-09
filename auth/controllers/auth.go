@@ -12,9 +12,18 @@ import (
 	"github.com/joaoribeirodasilva/teos/auth/requests"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/responses"
+	"github.com/joaoribeirodasilva/teos/common/utils/cookie"
 	"github.com/joaoribeirodasilva/teos/common/utils/password"
 	"github.com/joaoribeirodasilva/teos/users/models"
 	"gorm.io/gorm"
+)
+
+const (
+	AUTH_COOKIE_NAME      = "auth"
+	AUTH_COOKIE_EXPIRE    = 900
+	AUTH_COOKIE_DOMAIN    = "localhost"
+	AUTH_COOKIE_HTTP_ONLY = true
+	AUTH_COOKIE_SECURE    = false
 )
 
 func AuthLogin(c *gin.Context) {
@@ -74,7 +83,19 @@ func AuthLogin(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusForbidden, response)
 	}
 
+	tokenString := ""
+
+	cookie, err := cookie.NewFromConfiguration(
+		tokenString,
+		vars.Configuration,
+	)
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+	}
+
 	//TODO: Generate the token
+
+	cookie.SetCookie(c)
 
 	c.Status(http.StatusOK)
 }
@@ -199,6 +220,8 @@ func AuthReset(c *gin.Context) {
 			c.AbortWithStatus(http.StatusNotFound)
 			return
 		}
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
 	}
 
 	now := time.Now().UTC()
@@ -212,6 +235,40 @@ func AuthReset(c *gin.Context) {
 	// TODO: Get the user account
 	// TODO: Update the user password
 
+	user := models.UserUser{}
+
+	if err := vars.Db.Conn.Where("id = ?", reset.UserUserID).First(&user).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.AbortWithStatus(http.StatusNotFound)
+			return
+		}
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	if user.Active == 0 {
+		response := responses.ResponseErrorMessage{
+			Error: responses.ErrMessage{
+				Message: "account disabled",
+			},
+		}
+		c.AbortWithStatusJSON(http.StatusForbidden, response)
+	}
+
+	tempPassword, err := password.Hash(request.Password)
+	if err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	user.Password = &tempPassword
+	user.UpdatedBy = user.ID
+
+	if err := vars.Db.Conn.Save(&user).Error; err != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
 	c.Status(http.StatusOK)
 
 }
@@ -223,6 +280,10 @@ func AuthLogout(c *gin.Context) {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
+
+	//TODO: delete the user
+
+	c.SetCookie(AUTH_COOKIE_NAME, "", AUTH_COOKIE_EXPIRE, "/", AUTH_COOKIE_DOMAIN, AUTH_COOKIE_HTTP_ONLY, AUTH_COOKIE_SECURE)
 
 	c.Status(http.StatusOK)
 }

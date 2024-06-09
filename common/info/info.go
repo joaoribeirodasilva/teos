@@ -13,5 +13,6 @@ func Print(servcie string, version string) {
 	fmt.Printf("%s Micro-Service\n", strings.ToUpper(servcie))
 	fmt.Printf("Version %s\n", version)
 	fmt.Printf("by BIQX (2024-%s)\n", now.Format("2006"))
+	fmt.Printf("Licenced under GPL-3.0\n")
 
 }

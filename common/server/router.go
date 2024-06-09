@@ -3,22 +3,25 @@ package server
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/conf"
+	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/database"
 )
 
 type Router struct {
-	Conf *conf.Conf
-	Gin  *gin.Engine
-	Db   *database.Db
+	Conf          *conf.Conf
+	Gin           *gin.Engine
+	Db            *database.Db
+	Configuration *configuration.Configuration
 }
 
-func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db) *Router {
+func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db, configuration *configuration.Configuration) *Router {
 
 	r := &Router{}
 
 	r.Conf = conf
 	r.Gin = gin
 	r.Db = db
+	r.Configuration = configuration
 
 	return r
 }
@@ -28,6 +31,7 @@ func (r *Router) Variables(c *gin.Context) {
 	//fmt.Println("router variables")
 	c.Set("db", r.Db)
 	c.Set("conf", r.Conf)
+	c.Set("configuration", r.Configuration)
 }
 
 func (r *Router) IsLogged(c *gin.Context) {
