@@ -93,7 +93,7 @@ func (q *QueryString) Bind() *service_errors.Error {
 	strFilter := q.c.Query("f")
 	strId := q.c.Params.ByName("id")
 
-	fmt.Printf("Begin: %+v\n", q)
+	//fmt.Printf("Begin: %+v\n", q)
 
 	var tempInt int
 	tempInt, err = strconv.Atoi(strPage)
@@ -164,7 +164,7 @@ func (q *QueryString) parseFilter(filter string) *service_errors.Error {
 		return nil
 	}
 
-	filters := strings.Split(filter, "?")
+	filters := strings.Split(filter, ";")
 
 	for _, filter := range filters {
 
@@ -292,6 +292,8 @@ func (q *QueryString) parseFilter(filter string) *service_errors.Error {
 	} else if len(filterArray) == 1 {
 		q.Filter = &filterArray[0]
 	}
+
+	fmt.Printf("Filter: %+v\n", q.Filter)
 
 	return nil
 }
