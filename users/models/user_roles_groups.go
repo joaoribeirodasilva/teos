@@ -1,22 +1,27 @@
 package models
 
 import (
-	"gorm.io/gorm"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type UserRolesGroup struct {
-	gorm.Model
-	UserRoleID  uint      `json:"roleId" gorm:"column:user_role_id;type:uint;not null;"`
-	UserRole    UserRole  `json:"role,omitempty"`
-	UserGroupID uint      `json:"groupId" gorm:"column:user_group_id;type:uint;not null;"`
-	UserGroup   UserGroup `json:"group,omitempty"`
-	Active      uint      `json:"active" gorm:"column:active;type:uint;not null;default:0"`
-	CreatedBy   uint      `json:"createdBy" gorm:"column:created_by;type:uint;not null;"`
-	UpdatedBy   uint      `json:"updatedBy" gorm:"column:updated_by;type:uint;not null;"`
-	DeletedBy   *uint     `json:"deletedBy" gorm:"column:deleted_by;type:uint;"`
+	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
+	UserRoleID  primitive.ObjectID  `json:"userRoleId" bson:"roleId"`
+	UserRole    UserRole            `json:"userRole,omitempty" bson:"-"`
+	UserGroupID primitive.ObjectID  `json:"userGroupId" bson:"userGroupId"`
+	UserGroup   UserGroup           `json:"userGroup,omitempty" bson:"-"`
+	Active      bool                `json:"active" bson:"active"`
+	CreatedBy   primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt   time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy   primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt   time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy   *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
 type UserRolesGroups struct {
-	Count int               `json:"count"`
+	Count int64             `json:"count"`
 	Rows  *[]UserRolesGroup `json:"rows"`
 }

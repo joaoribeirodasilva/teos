@@ -9,6 +9,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/info"
 	"github.com/joaoribeirodasilva/teos/common/server"
+	"github.com/joaoribeirodasilva/teos/common/service_errors"
 )
 
 const (
@@ -19,6 +20,8 @@ const (
 func main() {
 
 	info.Print(SERVICE_NAME, VERSION)
+
+	service_errors.AppName = SERVICE_NAME
 
 	conf := conf.New(SERVICE_NAME)
 	if !conf.Read() {

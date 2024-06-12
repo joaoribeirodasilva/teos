@@ -1,22 +1,27 @@
 package models
 
 import (
-	"gorm.io/gorm"
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type UserGroup struct {
-	gorm.Model
-	ParentID    uint       `json:"parentID" gorm:"column:parent_id;type:uint;not null;"`
-	Parent      *UserGroup `json:"parent,omitempty"`
-	Name        string     `json:"name" gorm:"column:name;type:string;size:255;not null"`
-	Description *string    `json:"description" gorm:"column:description;type:string;size:65536"`
-	GroupPath   *string    `json:"groupPath" gorm:"column:group_path;type:string;size:2048"`
-	CreatedBy   uint       `json:"createdBy" gorm:"column:created_by;type:uint;not null;"`
-	UpdatedBy   uint       `json:"updatedBy" gorm:"column:updated_by;type:uint;not null;"`
-	DeletedBy   *uint      `json:"deletedBy" gorm:"column:deleted_by;type:uint;"`
+	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
+	ParentID    primitive.ObjectID  `json:"parentId" bson:"parentId"`
+	Parent      *UserGroup          `json:"parent,omitempty"`
+	Name        string              `json:"name,omitempty" `
+	Description *string             `json:"description" bson:"description"`
+	GroupPath   *string             `json:"userGroupPath" bson:"userGroupPath"`
+	CreatedBy   primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt   time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy   primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt   time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy   *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
 type UserGroups struct {
-	Count int          `json:"count"`
+	Count int64        `json:"count"`
 	Rows  *[]UserGroup `json:"rows"`
 }

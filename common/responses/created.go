@@ -1,5 +1,5 @@
 package responses
 
 type ResponseCreated struct {
-	ID uint `json:"id"`
+	ID interface{} `json:"_id"`
 }

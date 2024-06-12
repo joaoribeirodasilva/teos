@@ -1,12 +1,12 @@
 package conf
 
 import (
-	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 
+	"github.com/joaoribeirodasilva/teos/common/service_errors"
 	"github.com/joho/godotenv"
 )
 
@@ -26,8 +26,9 @@ type ConfDatabase struct {
 }
 
 type Conf struct {
-	Service  ConfService
-	Database ConfDatabase
+	Service         ConfService
+	Database        ConfDatabase
+	DefaultPageSize int64
 }
 
 const (
@@ -36,6 +37,7 @@ const (
 	defaultDatabasePort    = 3306
 	defaultDatabaseName    = "teos"
 	defaultDatabaseOptions = "charset=utf8&parseTime=True"
+	defaultPageSize        = 100
 )
 
 func New(serviceName string) *Conf {
@@ -47,16 +49,17 @@ func New(serviceName string) *Conf {
 func (c *Conf) Read() bool {
 
 	if err := godotenv.Load(); err != nil {
-		fmt.Println(err.Error())
-		slog.Info(".env file not found, will search in the system environment variables")
+		//fmt.Println(err.Error())
+		slog.Info("[CONF] .env file not found, will search in the system environment variables")
+
 	}
 
 	tempStr := strings.TrimSpace(os.Getenv("SERVICE_NAME"))
 	if tempStr == "" {
-		slog.Error("invalid service name found")
+		service_errors.New(0, 0, "CONF", "Read", "invalid service name", "").LogError()
 		return false
 	} else if c.Service.Name != tempStr {
-		slog.Error(fmt.Sprintf("the configuration found is for service %s and this service is %s", tempStr, c.Service.Name))
+		service_errors.New(0, 0, "CONF", "Read", "the configuration found is for service %s and this service is %s", tempStr, c.Service.Name).LogError()
 		return false
 	}
 
@@ -73,7 +76,7 @@ func (c *Conf) Read() bool {
 	} else {
 		tempInt, err := strconv.Atoi(tempStr)
 		if err != nil {
-			slog.Error("invalid service port found")
+			service_errors.New(0, 0, "CONF", "Read", "invalid service port found", "").LogError()
 			return false
 		}
 		c.Service.BindPort = tempInt
@@ -81,7 +84,7 @@ func (c *Conf) Read() bool {
 
 	tempStr = strings.TrimSpace(os.Getenv("DB_HOST"))
 	if tempStr == "" {
-		slog.Error("invalid database host address found")
+		service_errors.New(0, 0, "CONF", "Read", "invalid database host address found", "").LogError()
 		return false
 	}
 	c.Database.Host = tempStr
@@ -91,7 +94,7 @@ func (c *Conf) Read() bool {
 	if tempStr != "" {
 		tempInt, err := strconv.Atoi(tempStr)
 		if err != nil {
-			slog.Error("invalid database port found")
+			service_errors.New(0, 0, "CONF", "Read", "invalid database port found", "").LogError()
 			return false
 		}
 		c.Database.Port = tempInt
@@ -103,25 +106,25 @@ func (c *Conf) Read() bool {
 		c.Database.Database = tempStr
 	}
 
+	c.Database.Username = ""
 	tempStr = strings.TrimSpace(os.Getenv("DB_USERNAME"))
-	if tempStr == "" {
-		slog.Error("invalid database username found")
-		return false
+	if tempStr != "" {
+		c.Database.Username = tempStr
 	}
-	c.Database.Username = tempStr
 
-	tempStr = strings.TrimSpace(os.Getenv("DB_PASSWORD"))
-	if tempStr == "" {
-		slog.Error("invalid database password found")
-		return false
-	}
-	c.Database.Password = tempStr
-
-	c.Database.Options = defaultDatabaseOptions
+	c.Database.Password = ""
 	tempStr = strings.TrimSpace(os.Getenv("DB_PASSWORD"))
 	if tempStr != "" {
 		c.Database.Password = tempStr
 	}
+
+	c.Database.Options = defaultDatabaseOptions
+	tempStr = strings.TrimSpace(os.Getenv("DB_OPTIONS"))
+	if tempStr != "" {
+		c.Database.Options = tempStr
+	}
+
+	c.DefaultPageSize = defaultPageSize
 
 	return true
 }

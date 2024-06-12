@@ -1,10 +1,11 @@
 package controllers
 
 import (
-	"errors"
+	"context"
 	"net/http"
 	"net/mail"
 	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
@@ -12,7 +13,10 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/utils/password"
 	"github.com/joaoribeirodasilva/teos/users/models"
 	"github.com/joaoribeirodasilva/teos/users/requests"
-	"gorm.io/gorm"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func UserUsersList(c *gin.Context) {
@@ -128,8 +132,10 @@ func UserUsersCreate(c *gin.Context) {
 
 	record := models.UserUser{}
 
-	if err := vars.Db.Conn.Where("email=?", request.Email).First(&record).Error; err != nil {
-		if !errors.Is(err, gorm.ErrRecordNotFound) {
+	coll := vars.Db.Db.Collection("user_users")
+	opts := options.FindOneOptions{Collation: &options.Collation{CaseLevel: false, Strength: 1}}
+	if err := coll.FindOne(context.TODO(), bson.D{{Key: "email", Value: request.Email}}, &opts).Decode(&record); err != nil {
+		if err != mongo.ErrNoDocuments {
 			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
@@ -150,21 +156,27 @@ func UserUsersCreate(c *gin.Context) {
 	tempPassword, err = password.Hash(request.Password)
 	record.Active = 0
 	//TODO: replace with the right user
+
+	now := time.Now().UTC()
 	record.CreatedBy = 1
-	record.CreatedBy = 1
+	record.CreatedAt = now
+	record.UpdatedBy = 1
+	record.UpdatedAt = now
 	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 	record.Password = &tempPassword
+	record.ID = primitive.NewObjectID()
 
-	if err := vars.Db.Conn.Create(&record).Error; err != nil {
+	result, err := coll.InsertOne(context.TODO(), record)
+	if err != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
 	response := responses.ResponseCreated{
-		ID: record.ID,
+		ID: result.InsertedID,
 	}
 
 	c.JSON(http.StatusCreated, response)

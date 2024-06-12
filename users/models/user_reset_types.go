@@ -1,12 +1,19 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type UserResetType struct {
-	gorm.Model
-	Name        string  `json:"name" gorm:"column:name;type:string;size:255;not null;"`
-	Description *string `json:"description" gorm:"column:description;type:string;size:65536;"`
-	CreatedBy   uint    `json:"createdBy" gorm:"column:created_by;type:uint;;not null;"`
-	UpdatedBy   uint    `json:"updatedBy" gorm:"column:updated_by;type:uint;;not null;"`
-	DeletedBy   *uint   `json:"deletedBy" gorm:"column:deleted_by;type:uint;"`
+	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
+	Name        string              `json:"name" bson:"name"`
+	Description *string             `json:"description" bson:"description"`
+	CreatedBy   primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt   time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy   primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt   time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy   *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }

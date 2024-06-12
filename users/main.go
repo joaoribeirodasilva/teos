@@ -8,6 +8,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/info"
 	"github.com/joaoribeirodasilva/teos/common/server"
+	"github.com/joaoribeirodasilva/teos/common/service_errors"
 	"github.com/joaoribeirodasilva/teos/users/routes"
 )
 
@@ -19,6 +20,8 @@ const (
 func main() {
 
 	info.Print(SERVICE_NAME, VERSION)
+
+	service_errors.AppName = SERVICE_NAME
 
 	conf := conf.New(SERVICE_NAME)
 	if !conf.Read() {
@@ -39,7 +42,8 @@ func main() {
 	}
 
 	svc := server.New(db, conf)
-	router := server.NewRouter(svc.Service, conf, db, serviceConfiguration)
+	//router := server.NewRouter(svc.Service, conf, db, serviceConfiguration)
+	router := server.NewRouter(svc.Service, conf, db, nil)
 	routes.RegisterRoutes(router)
 	if err := svc.Listen(); err != nil {
 		os.Exit(1)

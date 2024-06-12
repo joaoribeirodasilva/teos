@@ -3,19 +3,22 @@ package models
 import (
 	"time"
 
-	"gorm.io/gorm"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type UserReset struct {
-	gorm.Model
-	UserResetTypeID uint          `json:"resetTypeID" gorm:"column:user_reset_type_id;type:uint;not null"`
-	UserResetType   UserResetType `json:"resetType,omitempty"`
-	UserUserID      uint          `json:"userID" gorm:"column:user_user_id;type:uint;not null"`
-	UserUser        UserUser      `json:"user,omitempty"`
-	ResetKey        string        `json:"-" gorm:"column:reset_key;type:string;size:255;not null;"`
-	Used            *time.Time    `json:"used" gorm:"column:used;type:time;"`
-	Expire          time.Time     `json:"expire" gorm:"column:expire;type:time;not null;"`
-	CreatedBy       uint          `json:"createdBy" gorm:"column:created_by;type:uint;;not null;"`
-	UpdatedBy       uint          `json:"updatedBy" gorm:"column:updated_by;type:uint;;not null;"`
-	DeletedBy       *uint         `json:"deletedBy" gorm:"column:deleted_by;type:uint;"`
+	ID              primitive.ObjectID  `json:"_id" bson:"_id"`
+	UserResetTypeID uint                `json:"userResetTypeId" bson:"resetTypeId"`
+	UserResetType   UserResetType       `json:"userResetType,omitempty" bson:"-"`
+	UserUserID      primitive.ObjectID  `json:"userUserId" bson:"userId"`
+	UserUser        UserUser            `json:"userUser,omitempty" bson:"-"`
+	ResetKey        string              `json:"-" bson:"resetKey"`
+	Used            *time.Time          `json:"used" bson:"used"`
+	Expire          time.Time           `json:"expire" bson:"expire"`
+	CreatedBy       primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt       time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy       primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt       time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy       *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt       *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }

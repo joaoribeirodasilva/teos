@@ -1,17 +1,24 @@
 package models
 
-import "gorm.io/gorm"
+import (
+	"time"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type UserSession struct {
-	gorm.Model
-	UserUserID uint     `json:"userId" gorm:"column:user_user_id;type:uint;not null;"`
-	UserUser   UserUser `json:"user,omitempty"`
-	CreatedBy  uint     `json:"createdBy" gorm:"column:created_by;type:uint;not null;"`
-	UpdatedBy  uint     `json:"updatedBy" gorm:"column:updated_by;type:uint;not null;"`
-	DeletedBy  *uint    `json:"deletedBy" gorm:"column:deleted_by;type:uint;"`
+	ID         primitive.ObjectID  `json:"_id" bson:"_id"`
+	UserUserID primitive.ObjectID  `json:"userUserId" bson:"userUserId"`
+	UserUser   UserUser            `json:"userUser,omitempty" bson:"-"`
+	CreatedBy  primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt  time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy  primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt  time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy  *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt  *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
 type UserSessions struct {
-	Count int            `json:"count"`
+	Count int64          `json:"count"`
 	Rows  *[]UserSession `json:"rows"`
 }

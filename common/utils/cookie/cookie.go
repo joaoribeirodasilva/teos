@@ -57,10 +57,10 @@ func NewFromConfiguration(value string, config *configuration.Configuration) (*C
 	c := &Cookie{}
 
 	tempKey := config.GetKey("COOKIE_NAME")
-	if tempKey == nil || tempKey.Char == nil || *tempKey.Char == "" {
+	if tempKey == nil || tempKey.String == nil || *tempKey.String == "" {
 		return nil, errors.New("invalid cookie name")
 	}
-	c.Name = *tempKey.Char
+	c.Name = *tempKey.String
 
 	tempKey = config.GetKey("COOKIE_EXPIRE")
 	if tempKey == nil || tempKey.Int == nil {
@@ -69,10 +69,10 @@ func NewFromConfiguration(value string, config *configuration.Configuration) (*C
 	c.MaxAge = *tempKey.Int
 
 	tempKey = config.GetKey("COOKIE_DOMAIN")
-	if tempKey == nil || tempKey.Char == nil || *tempKey.Char == "" {
+	if tempKey == nil || tempKey.String == nil || *tempKey.String == "" {
 		return nil, errors.New("invalid cookie name")
 	}
-	c.Domain = *tempKey.Char
+	c.Domain = *tempKey.String
 
 	tempKey = config.GetKey("COOKIE_SECURE")
 	if tempKey == nil || tempKey.Int == nil {

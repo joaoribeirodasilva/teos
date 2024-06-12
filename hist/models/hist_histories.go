@@ -1,23 +1,28 @@
 package models
 
 import (
+	"time"
+
 	apps_models "github.com/joaoribeirodasilva/teos/apps/models"
-	"gorm.io/gorm"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type HistHistory struct {
-	gorm.Model
-	AppAppID   uint               `json:"applicationId" gorm:"column:app_app_id;type:uint;not null;"`
-	AppApp     apps_models.AppApp `json:"application,omitempty"`
-	Table      string             `json:"table" gorm:"column:table;type:string;size:255;not null;"`
-	OriginalID uint               `json:"originalId" gorm:"column:original_id;type:uint;not null;"`
-	Data       string             `json:"data" gorm:"column:data;type:string;size:16777215;not null;"`
-	CreatedBy  uint               `json:"createdBy" gorm:"column:created_by;type:uint;not null;"`
-	UpdatedBy  uint               `json:"updatedBy" gorm:"column:updated_by;type:uint;not null;"`
-	DeletedBy  *uint              `json:"deletedBy" gorm:"column:deleted_by;type:uint;"`
+	ID         primitive.ObjectID  `json:"_id" bson:"_id"`
+	AppAppID   primitive.ObjectID  `json:"appAppId" bson:"appAppId"`
+	AppApp     apps_models.AppApp  `json:"appApp,omitempty" bson:"-"`
+	Table      string              `json:"table" bson:"table"`
+	OriginalID primitive.ObjectID  `json:"originalId" bson:"originalId"`
+	Data       interface{}         `json:"data" bson:"data"`
+	CreatedBy  primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt  time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy  primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt  time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy  *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt  *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
 type HistHistories struct {
-	Count int            `json:"count"`
+	Count int64          `json:"count"`
 	Rows  *[]HistHistory `json:"rows"`
 }
