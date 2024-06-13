@@ -18,13 +18,11 @@ type Router struct {
 	Gin           *gin.Engine
 	Db            *database.Db
 	Configuration *configuration.Configuration
-	historyDB     *redisdb.RedisDB
-	logsDB        *redisdb.RedisDB
 	sessionsDB    *redisdb.RedisDB
 	permissionsDB *redisdb.RedisDB
 }
 
-func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db, configuration *configuration.Configuration, historyDB *redisdb.RedisDB, sessionsDB *redisdb.RedisDB, permissionsDB *redisdb.RedisDB) *Router {
+func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db, configuration *configuration.Configuration, sessionsDB *redisdb.RedisDB, permissionsDB *redisdb.RedisDB) *Router {
 
 	r := &Router{}
 
@@ -32,7 +30,6 @@ func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db, configuration 
 	r.Gin = gin
 	r.Db = db
 	r.Configuration = configuration
-	r.historyDB = historyDB
 	r.sessionsDB = sessionsDB
 	r.permissionsDB = permissionsDB
 	return r
@@ -44,7 +41,6 @@ func (r *Router) Variables(c *gin.Context) {
 	c.Set("db", r.Db)
 	c.Set("conf", r.Conf)
 	c.Set("configuration", r.Configuration)
-	c.Set("historyDb", r.historyDB)
 	c.Set("sessionsDb", r.sessionsDB)
 	c.Set("permissionsDb", r.permissionsDB)
 }

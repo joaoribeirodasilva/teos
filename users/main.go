@@ -45,11 +45,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	historyDB := redisdb.New("History Database", serviceConfiguration.DbHistory.Addresses, serviceConfiguration.DbHistory.Db, serviceConfiguration.DbHistory.Username, serviceConfiguration.DbHistory.Password)
-	if appErr := historyDB.Connect(); appErr != nil {
-		os.Exit(1)
-	}
-
 	sessionsDB := redisdb.New("Sessions Database", serviceConfiguration.DbSessions.Addresses, serviceConfiguration.DbSessions.Db, serviceConfiguration.DbSessions.Username, serviceConfiguration.DbSessions.Password)
 	if appErr := sessionsDB.Connect(); appErr != nil {
 		os.Exit(1)
@@ -76,7 +71,7 @@ func main() {
 
 	svc := server.New(db, conf)
 	//router := server.NewRouter(svc.Service, conf, db, serviceConfiguration)
-	router := server.NewRouter(svc.Service, conf, db, serviceConfiguration, historyDB, sessionsDB, permissionsDB)
+	router := server.NewRouter(svc.Service, conf, db, serviceConfiguration, sessionsDB, permissionsDB)
 	routes.RegisterRoutes(router)
 	if err := svc.Listen(); err != nil {
 		os.Exit(1)

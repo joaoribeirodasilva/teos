@@ -18,7 +18,6 @@ type Variables struct {
 	Db            *database.Db
 	Configuration *configuration.Configuration
 	User          *token.User
-	HistoryDB     *redisdb.RedisDB
 	SessionsDB    *redisdb.RedisDB
 	PermissionsDB *redisdb.RedisDB
 }
@@ -53,12 +52,6 @@ func MustGetAll(c *gin.Context) (*Variables, *service_errors.Error) {
 		if !ok {
 			return nil, service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::MustGetAll", "auth", "invalid user pointer")
 		}
-	}
-
-	hDb := c.MustGet("historyDb")
-	v.HistoryDB, ok = hDb.(*redisdb.RedisDB)
-	if !ok {
-		return nil, service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::MustGetAll", "historyDb", "invalid history database pointer")
 	}
 
 	sDb := c.MustGet("sessionsDb")
