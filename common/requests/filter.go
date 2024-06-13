@@ -3,6 +3,8 @@ package requests
 import (
 	"fmt"
 	"net/http"
+	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -24,6 +26,7 @@ type QueryString struct {
 	c        *gin.Context         `query:"-"`
 	ID       *primitive.ObjectID  `query:"-"`
 	Options  *options.FindOptions `query:"-"`
+	Related  bool                 `query:"r"`
 	Filter   *primitive.D         `query:"-"`
 }
 
@@ -53,18 +56,21 @@ const (
 	OPERATION_CONTAINS           = "$ct"
 )
 
-var operations = map[string]string{
-	OPERATION_EQUAL:              "$eq",
-	OPERATION_NOTEQUAL:           "$ne",
-	OPERATION_LESSTHAN:           "$lt",
-	OPERATION_GREATERTHAN:        "$gt",
-	OPERATION_LESSTHANOREQUAL:    "$lte",
-	OPERATION_GREATERTHANOREQUAL: "$gte",
-	OPERATION_BETWEEN:            "",
-	OPERATION_STARTSWITH:         "",
-	OPERATION_ENDSWITH:           "",
-	OPERATION_CONTAINS:           "",
-}
+var (
+	operations = map[string]string{
+		OPERATION_EQUAL:              "$eq",
+		OPERATION_NOTEQUAL:           "$ne",
+		OPERATION_LESSTHAN:           "$lt",
+		OPERATION_GREATERTHAN:        "$gt",
+		OPERATION_LESSTHANOREQUAL:    "$lte",
+		OPERATION_GREATERTHANOREQUAL: "$gte",
+		OPERATION_BETWEEN:            "",
+		OPERATION_STARTSWITH:         "",
+		OPERATION_ENDSWITH:           "",
+		OPERATION_CONTAINS:           "",
+	}
+	nonFilterKeys = []string{"p", "ps", "a", "s", "d", "r"}
+)
 
 func NewQueryString(c *gin.Context) *QueryString {
 	q := new(QueryString)
@@ -77,6 +83,7 @@ func NewQueryString(c *gin.Context) *QueryString {
 	q.ID = nil
 	q.Filter = &primitive.D{{}}
 	q.Options = &options.FindOptions{}
+	q.Related = false
 	q.c = c
 	return q
 }
@@ -90,7 +97,12 @@ func (q *QueryString) Bind() *service_errors.Error {
 	strAll := q.c.DefaultQuery("a", "false")
 	strSort := q.c.DefaultQuery("s", "id")
 	strDir := q.c.DefaultQuery("d", "DESC")
-	strFilter := q.c.Query("f")
+	strRelated := q.c.DefaultQuery("r", "false")
+	//strFilter := q.c.Query("f")
+	fullQuery := q.c.Request.URL.Query()
+
+	fmt.Printf("Query: %+v\n", fullQuery)
+
 	strId := q.c.Params.ByName("id")
 
 	//fmt.Printf("Begin: %+v\n", q)
@@ -112,6 +124,11 @@ func (q *QueryString) Bind() *service_errors.Error {
 	q.all, err = strconv.ParseBool(strAll)
 	if err != nil {
 		return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "Bind", "invalid all records requested (must be a boolean)", "").LogError()
+	}
+
+	q.Related, err = strconv.ParseBool(strRelated)
+	if err != nil {
+		q.Related = false
 	}
 
 	//fmt.Printf("%+v\n", query)
@@ -147,7 +164,7 @@ func (q *QueryString) Bind() *service_errors.Error {
 	q.getPagination()
 	q.getSort()
 
-	if appErr := q.parseFilter(strFilter); appErr != nil {
+	if appErr := q.parseFilter(fullQuery); appErr != nil {
 		return appErr
 	}
 
@@ -156,39 +173,51 @@ func (q *QueryString) Bind() *service_errors.Error {
 	return nil
 }
 
-func (q *QueryString) parseFilter(filter string) *service_errors.Error {
+func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
 
 	filterArray := []primitive.D{}
 
-	if filter == "" {
+	if len(filters) == 0 {
 		return nil
 	}
 
-	filters := strings.Split(filter, ";")
+	// by default we add the filter for records that are not deleted
+	hasDeletedBy := url.Values.Get(filters, "deletedBy")
+	hasDeletedAt := url.Values.Get(filters, "deletedAt")
+	if hasDeletedBy == "" && hasDeletedAt == "" {
+		f := primitive.D{{Key: "deletedBy", Value: nil}}
+		filterArray = append(filterArray, f)
+		f = primitive.D{{Key: "deletedAt", Value: nil}}
+		filterArray = append(filterArray, f)
+	}
 
-	for _, filter := range filters {
-
-		params := strings.Split(filter, ",")
-		if len(params) != 3 {
-			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "invalid filter parameter count", "").LogError()
+	for key, filter := range filters {
+		if slices.Contains(nonFilterKeys, key) {
+			continue
 		}
 
-		field := params[0]
+		fmt.Printf("Key: %s, Val: %+v\n", key, filter)
+		params := strings.Split(filter[0], ",")
+		if len(params) != 2 {
+			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "invalid filter '%s' parameter count", key).LogError()
+		}
+
+		field := key
 		if field == "" {
-			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "invalid filter field", "").LogError()
+			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "invalid filter field").LogError()
 		}
 
-		value := params[2]
-		operation, ok := operations[params[1]]
+		value := params[1]
+		operation, ok := operations[params[0]]
 		if !ok {
-			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "invalid filter operation", "").LogError()
+			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "invalid filter '%s' operation", key).LogError()
 		}
 
 		values := strings.Split(value, "|")
-		if len(values) != 1 && params[1] != OPERATION_BETWEEN {
-			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "invalid filter value", "").LogError()
+		if len(values) != 1 && params[0] != OPERATION_BETWEEN {
+			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "invalid filter '%s' value", key).LogError()
 		} else if len(values) != 2 && params[1] == OPERATION_BETWEEN {
-			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "invalid filter between value", "").LogError()
+			return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "invalid filter '%s' between value", key).LogError()
 		}
 
 		dataType := TYPE_STRING
@@ -223,13 +252,13 @@ func (q *QueryString) parseFilter(filter string) *service_errors.Error {
 
 		if len(values) == 2 {
 			if dataType != TYPE_NULL {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "a null can't be used with 2 values in the same operation", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', a null can't be used with 2 values in the same operation", key).LogError()
 			}
 			if dataType != TYPE_BOOL {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "a boolean can't be used with 2 values in the same operation", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', a boolean can't be used with 2 values in the same operation", key).LogError()
 			}
 			if dataType != TYPE_BOOL {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "a string can't be used with 2 values in the same operation", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', a string can't be used with 2 values in the same operation", key).LogError()
 			}
 
 			if operation == OPERATION_BETWEEN {
@@ -238,18 +267,18 @@ func (q *QueryString) parseFilter(filter string) *service_errors.Error {
 				if date != nil {
 					valEnd = *date
 				} else if dataType != TYPE_DATE {
-					return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "invalid second date value", "").LogError()
+					return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', invalid second date value", key).LogError()
 				}
 
 				number := q.isNumeric(values[1])
 				if number != nil {
 					valEnd = *number
 				} else if dataType != TYPE_NUMERIC {
-					return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "invalid second numeric value", "").LogError()
+					return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', invalid second numeric value", key).LogError()
 				}
 
 			} else {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "use of 2 values outside a between operation", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', use of 2 values outside a between operation", key).LogError()
 			}
 		}
 
@@ -257,7 +286,7 @@ func (q *QueryString) parseFilter(filter string) *service_errors.Error {
 		switch params[1] {
 		case OPERATION_BETWEEN:
 			if dataType != TYPE_DATE && dataType != TYPE_NUMERIC {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "between operations can only be used with data types numeric and date", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', between operations can only be used with data types numeric and date", key).LogError()
 			}
 			filt = primitive.D{
 				{Key: "$and", Value: primitive.A{
@@ -267,17 +296,17 @@ func (q *QueryString) parseFilter(filter string) *service_errors.Error {
 			}
 		case OPERATION_STARTSWITH:
 			if dataType != TYPE_STRING {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "start with operations can only be used with data type string", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', start with operations can only be used with data type string", key).LogError()
 			}
 			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: "^" + values[0], Options: "i"}}}}}
 		case OPERATION_ENDSWITH:
 			if dataType != TYPE_STRING {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "end with operations can only be used with data type string", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', end with operations can only be used with data type string", key).LogError()
 			}
 			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: values[0] + "$", Options: "i"}}}}}
 		case OPERATION_CONTAINS:
 			if dataType != TYPE_STRING {
-				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "contains operations can only be used with data type string", "").LogError()
+				return service_errors.New(0, http.StatusBadRequest, "REQUESTS", "parseFilter", "", "filter '%s', contains operations can only be used with data type string", key).LogError()
 			}
 			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: values[0], Options: "i"}}}}}
 		default:

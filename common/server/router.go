@@ -1,10 +1,15 @@
 package server
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
+	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/database"
+	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/joaoribeirodasilva/teos/common/utils/token"
 )
 
 type Router struct {
@@ -35,6 +40,30 @@ func (r *Router) Variables(c *gin.Context) {
 }
 
 func (r *Router) IsLogged(c *gin.Context) {
+
+	cookie, err := c.Cookie("teos_auth")
+	if err != nil {
+		appErr := service_errors.New(0, http.StatusForbidden, "ROUTER", "IsLogged", "", "ERR: %s", err.Error()).LogError()
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	vars, appErr := controllers.MustGetAll(c)
+	if appErr != nil {
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	token := token.New(vars.Configuration)
+	if !token.IsValid(cookie) {
+		appErr := service_errors.New(0, http.StatusForbidden, "ROUTER", "IsLogged", "", "invalid token").LogError()
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	c.Set("user", token.User)
+
+	//fmt.Printf("Cookie: %s\n", cookie)
 
 	// fmt.Println("router is logged")
 	/* 	auth := token.New(r.conf)

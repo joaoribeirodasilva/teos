@@ -25,9 +25,17 @@ type ConfDatabase struct {
 	Options  string
 }
 
+type ConfRedis struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+}
+
 type Conf struct {
 	Service         ConfService
 	Database        ConfDatabase
+	Redis           ConfRedis
 	DefaultPageSize int64
 }
 
@@ -38,6 +46,7 @@ const (
 	defaultDatabaseName    = "teos"
 	defaultDatabaseOptions = "charset=utf8&parseTime=True"
 	defaultPageSize        = 100
+	defaultRedisPort       = 6379
 )
 
 func New(serviceName string) *Conf {
@@ -71,9 +80,7 @@ func (c *Conf) Read() bool {
 
 	c.Service.BindPort = defaultBindPort
 	tempStr = strings.TrimSpace(os.Getenv("SERVICE_PORT"))
-	if tempStr == "" {
-		c.Service.BindPort = defaultBindPort
-	} else {
+	if tempStr != "" {
 		tempInt, err := strconv.Atoi(tempStr)
 		if err != nil {
 			service_errors.New(0, 0, "CONF", "Read", "invalid service port found", "").LogError()
@@ -123,6 +130,21 @@ func (c *Conf) Read() bool {
 	if tempStr != "" {
 		c.Database.Options = tempStr
 	}
+
+	c.Redis.Port = defaultRedisPort
+	tempStr = strings.TrimSpace(os.Getenv("REDIS_PORT"))
+	if tempStr != "" {
+		tempInt, err := strconv.Atoi(tempStr)
+		if err != nil {
+			service_errors.New(0, 0, "CONF", "Read", "invalid service port found", "").LogError()
+			return false
+		}
+		c.Redis.Port = tempInt
+	}
+
+	c.Redis.Host = strings.TrimSpace(os.Getenv("REDIS_HOST"))
+	c.Redis.Username = strings.TrimSpace(os.Getenv("REDIS_USERNAME"))
+	c.Redis.Password = strings.TrimSpace(os.Getenv("REDIS_PASSWORD"))
 
 	c.DefaultPageSize = defaultPageSize
 

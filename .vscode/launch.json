@@ -5,16 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name":"users (Debug)",
-            "type": "go",
-            "request":"launch",
-            "mode":"debug",
-            "program":"./users/main.go",
-            "env": {},
-            "args":[],
-            "showLog":true
-        },
-        {
             "name":"apps (Debug)",
             "type": "go",
             "request":"launch",
@@ -24,5 +14,26 @@
             "args":[],
             "showLog":true
         },
+        {
+            "name":"auth (Debug)",
+            "type": "go",
+            "request":"launch",
+            "mode":"debug",
+            "program":"./auth/main.go",
+            "env": {},
+            "args":[],
+            "showLog":true
+        },
+        {
+            "name":"users (Debug)",
+            "type": "go",
+            "request":"launch",
+            "mode":"debug",
+            "program":"./users/main.go",
+            "env": {},
+            "args":[],
+            "showLog":true
+        },
+
     ]
 }

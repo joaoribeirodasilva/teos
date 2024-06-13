@@ -10,5 +10,5 @@ func RegisterRoutes(router *server.Router) {
 	router.Gin.POST("/auth/forgot", router.Variables, controllers.AuthForgot)
 	router.Gin.PUT("/auth/reset/:key", router.Variables, controllers.AuthReset)
 	router.Gin.PATCH("/auth/reset/:key", router.Variables, controllers.AuthReset)
-	router.Gin.DELETE("/auth/logout", router.Variables, controllers.AuthLogout)
+	router.Gin.DELETE("/auth/logout", router.Variables, router.IsLogged, controllers.AuthLogout)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log/slog"
 	"os"
 
 	"github.com/joaoribeirodasilva/teos/common/conf"
@@ -40,6 +41,13 @@ func main() {
 	if err := serviceConfiguration.Read(); err != nil {
 		os.Exit(1)
 	}
+
+	tempPort := serviceConfiguration.GetKey("NET_PORT")
+	if tempPort == nil || tempPort.Int == nil {
+		slog.Error("invalid network port to listen to")
+		os.Exit(1)
+	}
+	conf.Service.BindPort = *tempPort.Int
 
 	svc := server.New(db, conf)
 	//router := server.NewRouter(svc.Service, conf, db, serviceConfiguration)

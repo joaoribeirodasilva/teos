@@ -11,11 +11,11 @@ type Error struct {
 	AppName  string `json:"-"`
 	Code     int    `json:"code"`
 	HttpCode int    `json:"-"`
-	Field    string `json:"-"`
-	module   string `json:"-"`
-	function string `json:"-"`
+	Field    string `json:"field"`
+	Module   string `json:"module"`
+	Function string `json:"function"`
 	message  string `json:"-"`
-	Message  string `json:"-"`
+	Message  string `json:"Message"`
 }
 
 func New(code int, httpCode int, module string, function string, field string, message string, args ...any) *Error {
@@ -23,16 +23,16 @@ func New(code int, httpCode int, module string, function string, field string, m
 	e.AppName = AppName
 	e.Code = code
 	e.HttpCode = httpCode
-	e.module = module
-	e.function = function
-	e.message = fmt.Sprintf(message, args...)
+	e.Module = module
+	e.Function = function
+	e.Message = fmt.Sprintf(message, args...)
 
 	return e
 }
 
 func (e *Error) Error() string {
-	e.Message = fmt.Sprintf("[%s::%s::%s] -> %s", e.AppName, e.module, e.function, e.message)
-	return e.Message
+	e.message = fmt.Sprintf("[%s::%s::%s] -> %s", e.AppName, e.Module, e.Function, e.message)
+	return e.message
 }
 
 func (e *Error) LogError() *Error {

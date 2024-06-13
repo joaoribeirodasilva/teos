@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/joaoribeirodasilva/teos/common/conf"
+	"github.com/joaoribeirodasilva/teos/common/service_errors"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -50,14 +51,12 @@ func (d *Db) Connect() error {
 	slog.Info(fmt.Sprintf("[DATABASE] connecting to database %s at %s:%d...\n", d.conf.Database.Database, d.conf.Database.Host, d.conf.Database.Port))
 	d.Conn, err = mongo.Connect(context.TODO(), options.Client().ApplyURI(dsn))
 	if err != nil {
-		slog.Error(fmt.Sprintf("[DATABASE] failed to connect to database %s at %s:%d. ERR: %s", d.conf.Database.Database, d.conf.Database.Host, d.conf.Database.Port, err.Error()))
-		return err
+		return service_errors.New(0, 0, "DATABASE", "Connect", "", "failed to connect to database %s at %s:%d. ERR: %s", d.conf.Database.Database, d.conf.Database.Host, d.conf.Database.Port, err.Error()).LogError()
 	}
 
 	d.Db = d.Conn.Database(d.conf.Database.Database)
 	if err := d.Conn.Ping(context.TODO(), nil); err != nil {
-		slog.Error(fmt.Sprintf("[DATABASE] failed to communicate with database %s at %s:%d. ERR: %s", d.conf.Database.Database, d.conf.Database.Host, d.conf.Database.Port, err.Error()))
-		return err
+		return service_errors.New(0, 0, "DATABASE", "Connect", "", "failed to communicate with database %s at %s:%d. ERR: %s", d.conf.Database.Database, d.conf.Database.Host, d.conf.Database.Port, err.Error()).LogError()
 	}
 	slog.Info("[DATABASE] connected")
 	return err

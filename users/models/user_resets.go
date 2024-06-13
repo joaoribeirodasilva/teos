@@ -8,7 +8,7 @@ import (
 
 type UserReset struct {
 	ID              primitive.ObjectID  `json:"_id" bson:"_id"`
-	UserResetTypeID uint                `json:"userResetTypeId" bson:"resetTypeId"`
+	UserResetTypeID primitive.ObjectID  `json:"userResetTypeId" bson:"resetTypeId"`
 	UserResetType   UserResetType       `json:"userResetType,omitempty" bson:"-"`
 	UserUserID      primitive.ObjectID  `json:"userUserId" bson:"userId"`
 	UserUser        UserUser            `json:"userUser,omitempty" bson:"-"`

@@ -42,7 +42,7 @@ func (s *Server) Listen() error {
 	go func() {
 		// service connections
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			service_errors.New(0, http.StatusBadRequest, "SERVER", "Listen", "listenning. ERR: %s", err.Error()).LogError()
+			service_errors.New(0, http.StatusBadRequest, "SERVER", "Listen", "", "listenning. ERR: %s", err.Error()).LogError()
 		}
 	}()
 
@@ -59,7 +59,7 @@ func (s *Server) Listen() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		service_errors.New(0, http.StatusBadRequest, "SERVER", "Listen", "shutingdon server. ERR: %s", err.Error()).LogError()
+		service_errors.New(0, http.StatusBadRequest, "SERVER", "Listen", "", "shutingdon server. ERR: %s", err.Error()).LogError()
 	}
 	// catching ctx.Done(). timeout of 5 seconds.
 	select {
