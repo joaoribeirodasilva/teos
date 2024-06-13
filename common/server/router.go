@@ -8,7 +8,8 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/database"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/joaoribeirodasilva/teos/common/redisdb"
+	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
 )
 
@@ -17,9 +18,13 @@ type Router struct {
 	Gin           *gin.Engine
 	Db            *database.Db
 	Configuration *configuration.Configuration
+	historyDB     *redisdb.RedisDB
+	logsDB        *redisdb.RedisDB
+	sessionsDB    *redisdb.RedisDB
+	permissionsDB *redisdb.RedisDB
 }
 
-func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db, configuration *configuration.Configuration) *Router {
+func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db, configuration *configuration.Configuration, historyDB *redisdb.RedisDB, sessionsDB *redisdb.RedisDB, permissionsDB *redisdb.RedisDB) *Router {
 
 	r := &Router{}
 
@@ -27,7 +32,9 @@ func NewRouter(gin *gin.Engine, conf *conf.Conf, db *database.Db, configuration 
 	r.Gin = gin
 	r.Db = db
 	r.Configuration = configuration
-
+	r.historyDB = historyDB
+	r.sessionsDB = sessionsDB
+	r.permissionsDB = permissionsDB
 	return r
 }
 
@@ -37,13 +44,16 @@ func (r *Router) Variables(c *gin.Context) {
 	c.Set("db", r.Db)
 	c.Set("conf", r.Conf)
 	c.Set("configuration", r.Configuration)
+	c.Set("historyDb", r.historyDB)
+	c.Set("sessionsDb", r.sessionsDB)
+	c.Set("permissionsDb", r.permissionsDB)
 }
 
 func (r *Router) IsLogged(c *gin.Context) {
 
 	cookie, err := c.Cookie("teos_auth")
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusForbidden, "ROUTER", "IsLogged", "", "ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusForbidden, "COMMON::ROUTER::IsLogged", "", "ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -56,7 +66,7 @@ func (r *Router) IsLogged(c *gin.Context) {
 
 	token := token.New(vars.Configuration)
 	if !token.IsValid(cookie) {
-		appErr := service_errors.New(0, http.StatusForbidden, "ROUTER", "IsLogged", "", "invalid token").LogError()
+		appErr := service_log.Error(0, http.StatusForbidden, "COMMON::ROUTER::IsLogged", "", "invalid token")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}

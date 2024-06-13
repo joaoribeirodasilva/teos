@@ -2,50 +2,104 @@ package controllers
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 	"net/http"
-	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
-	"github.com/joaoribeirodasilva/teos/common/responses"
+	"github.com/joaoribeirodasilva/teos/common/requests"
+	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joaoribeirodasilva/teos/hist/models"
-	"github.com/joaoribeirodasilva/teos/hist/requests"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func HistoriesList(c *gin.Context) {
 
-	_, err := controllers.MustGetAll(c)
-	if err != nil {
+	vars, appErr := controllers.MustGetAll(c)
+	if appErr != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	c.Status(http.StatusOK)
+	queryString := requests.NewQueryString(c)
+	if err := queryString.Bind(); err != nil {
+		c.AbortWithStatusJSON(err.HttpCode, err)
+		return
+	}
+
+	coll := vars.Db.Db.Collection("hist_history")
+
+	count, err := coll.CountDocuments(context.TODO(), queryString.Filter)
+	if err != nil {
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::HistoriesList", "", "failed to count records. ERR: %s", err.Error())
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	cursor, err := coll.Find(context.TODO(), queryString.Filter, queryString.Options)
+	if err != nil {
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::HistoriesList", "", "failed to query database. ERR: %s", err.Error())
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	records := []models.HistHistory{}
+	if err := cursor.All(context.TODO(), &records); err != nil {
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::HistoriesList", "", "failed to fetch database cursor. ERR: %s", err.Error())
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	response := models.HistHistories{
+		Count: count,
+		Rows:  &records,
+	}
+
+	c.JSON(http.StatusOK, &response)
 }
 
 func HistoriesGet(c *gin.Context) {
 
-	_, err := controllers.MustGetAll(c)
-	if err != nil {
+	vars, appErr := controllers.MustGetAll(c)
+	if appErr != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	c.Status(http.StatusOK)
+	queryString := requests.NewQueryString(c)
+	if appErr := queryString.Bind(); appErr != nil {
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	id := queryString.ID
+	if id == nil {
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::HistoriesGet", "id", "invalid object id in path")
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+	}
+
+	record := models.HistHistory{}
+	coll := vars.Db.Db.Collection("hist_history")
+	if err := coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: id}}).Decode(&record); err != nil {
+		if err != mongo.ErrNoDocuments {
+			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::HistoriesGet", "", "failed to query database. ERR: %s", err.Error())
+			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+			return
+		}
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
 }
 
-func HistoriesCreate(c *gin.Context) {
+/* func HistoriesCreate(c *gin.Context) {
 
-	vars, err := controllers.MustGetAll(c)
-	if err != nil {
+	vars, appErr := controllers.MustGetAll(c)
+	if appErr != nil {
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	request := requests.HistoriesCreate{}
+	request := models.HistHistory{}
 
 	if err := c.ShouldBind(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid JSON body"})
@@ -101,4 +155,4 @@ func HistoriesCreate(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusOK)
-}
+} */

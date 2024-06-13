@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/joaoribeirodasilva/teos/auth/requests"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joaoribeirodasilva/teos/common/utils/password"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
 	"github.com/joaoribeirodasilva/teos/users/models"
@@ -38,7 +38,7 @@ func AuthLogin(c *gin.Context) {
 
 	email, passwd, ok := c.Request.BasicAuth()
 	if !ok {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "AuthLogin", "", "invalid username or password").LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AuthLogin", "", "invalid username or password")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -48,7 +48,7 @@ func AuthLogin(c *gin.Context) {
 	coll := vars.Db.Db.Collection("user_users")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "email", Value: email}}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogin", "", "failed to query database. ERR: %s", err.Error()).LogError()
+			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthLogin", "", "failed to query database. ERR: %s", err.Error())
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
@@ -57,19 +57,19 @@ func AuthLogin(c *gin.Context) {
 	}
 
 	if record.Password == nil {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "AuthLogin", "", "invalid password").LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AuthLogin", "", "invalid password")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	if !password.Check(passwd, *record.Password) {
-		appErr := service_errors.New(0, http.StatusForbidden, "CONTROLLER", "AuthLogin", "", "invalid username or password").LogError()
+		appErr := service_log.Error(0, http.StatusForbidden, "CONTROLLER::AuthLogin", "", "invalid username or password")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	if record.Active == 0 || record.DeletedBy != nil || record.DeletedAt != nil {
-		appErr := service_errors.New(0, http.StatusUnauthorized, "CONTROLLER", "AuthLogin", "", "account disabled").LogError()
+		appErr := service_log.Error(0, http.StatusUnauthorized, "CONTROLLER::AuthLogin", "", "account disabled")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -88,7 +88,7 @@ func AuthLogin(c *gin.Context) {
 
 	result, err := collSession.InsertOne(context.TODO(), sessionRecord)
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusConflict, "CONTROLLER", "AuthLogin", "", "failed to insert session into the database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusConflict, "CONTROLLER::AuthLogin", "", "failed to insert session into the database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -102,35 +102,35 @@ func AuthLogin(c *gin.Context) {
 
 	tempName := vars.Configuration.GetKey("COOKIE_NAME")
 	if tempName == nil || tempName.String == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogin", "", "invalid cookie name").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthLogin", "", "invalid cookie name")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempExpire := vars.Configuration.GetKey("COOKIE_EXPIRE")
 	if tempExpire == nil || tempExpire.Int == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogin", "", "invalid cookie expire").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthLogin", "", "invalid cookie expire")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempDomain := vars.Configuration.GetKey("COOKIE_DOMAIN")
 	if tempDomain == nil || tempDomain.String == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogin", "", "invalid cookie domain").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthLogin", "", "invalid cookie domain")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempHttpOnly := vars.Configuration.GetKey("COOKIE_HTTP_ONLY")
 	if tempHttpOnly == nil || tempHttpOnly.Bool == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogin", "", "invalid cookie http only").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthLogin", "", "invalid cookie http only")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempSecure := vars.Configuration.GetKey("COOKIE_SECURE")
 	if tempSecure == nil || tempSecure.Bool == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogin", "", "invalid cookie secure").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthLogin", "", "invalid cookie secure")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -152,7 +152,7 @@ func AuthForgot(c *gin.Context) {
 
 	request := requests.ForgotPassword{}
 	if err := c.ShouldBind(&request); err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthForgot", "", "no email provided").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthForgot", "", "no email provided")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -160,7 +160,7 @@ func AuthForgot(c *gin.Context) {
 	request.Email = strings.TrimSpace(strings.ToLower(request.Email))
 	_, err := mail.ParseAddress(request.Email)
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthForgot", "", "invalid email provided").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthForgot", "", "invalid email provided")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -169,17 +169,17 @@ func AuthForgot(c *gin.Context) {
 	coll := vars.Db.Db.Collection("user_users")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "email", Value: request.Email}}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthForgot", "", "failed to query database. ERR: %s", err.Error()).LogError()
+			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthForgot", "", "failed to query database. ERR: %s", err.Error())
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthForgot", "", "wrong username or password").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthForgot", "", "wrong username or password")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	if record.DeletedBy != nil || record.DeletedAt != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthForgot", "", "wrong username or password").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthForgot", "", "wrong username or password")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -191,7 +191,7 @@ func AuthForgot(c *gin.Context) {
 	expire = expire.Add(time.Hour * 24)
 	resetTypeId, err := primitive.ObjectIDFromHex("6669fdf9175f523b82a26a13")
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthForgot", "", "invalid reset type id").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthForgot", "", "invalid reset type id")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -206,7 +206,7 @@ func AuthForgot(c *gin.Context) {
 
 	collUserResets := vars.Db.Db.Collection("user_resets")
 	if _, err := collUserResets.InsertOne(context.TODO(), resetRecord); err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthForgot", "", "failed to insert password reset into database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthForgot", "", "failed to insert password reset into database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -239,14 +239,14 @@ func AuthReset(c *gin.Context) {
 
 	request.Password = strings.TrimSpace(request.Password)
 	if request.Password == "" || len(request.Password) < 6 {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "AuthReset", "", "the password must have at least 6 characters").LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AuthReset", "", "the password must have at least 6 characters")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	request.CheckPassword = strings.TrimSpace(request.CheckPassword)
 	if request.CheckPassword != request.Password {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "AuthReset", "", "the passwords don't match").LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AuthReset", "", "the passwords don't match")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -261,18 +261,18 @@ func AuthReset(c *gin.Context) {
 		}},
 	}).Decode(&record); err != nil {
 		if err == mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusNotFound, "CONTROLLER", "AuthReset", "", "the reset was not found or it expired").LogError()
+			appErr := service_log.Error(0, http.StatusNotFound, "CONTROLLER::AuthReset", "", "the reset was not found or it expired")
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthReset", "", "failed to qurey database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "failed to qurey database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	now := time.Now().UTC()
 	if now.After(record.Expire) {
-		appErr := service_errors.New(0, http.StatusUnauthorized, "CONTROLLER", "AuthReset", "", "the reset request has expired").LogError()
+		appErr := service_log.Error(0, http.StatusUnauthorized, "CONTROLLER::AuthReset", "", "the reset request has expired")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -282,17 +282,17 @@ func AuthReset(c *gin.Context) {
 	usersColl := vars.Db.Db.Collection("user_users")
 	if err := usersColl.FindOne(context.TODO(), bson.D{{Key: "_id", Value: record.UserUserID}}).Decode(&userRecord); err != nil {
 		if err == mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusNotFound, "CONTROLLER", "AuthReset", "", "user not found").LogError()
+			appErr := service_log.Error(0, http.StatusNotFound, "CONTROLLER::AuthReset", "", "user not found")
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthReset", "", "failed to qurey database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "failed to qurey database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	if userRecord.Active == 0 {
-		appErr := service_errors.New(0, http.StatusUnauthorized, "CONTROLLER", "AuthReset", "", "account disabled").LogError()
+		appErr := service_log.Error(0, http.StatusUnauthorized, "CONTROLLER::AuthReset", "", "account disabled")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -314,7 +314,7 @@ func AuthReset(c *gin.Context) {
 		{Key: "$set", Value: userRecord},
 	})
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthReset", "", "failed to update password into database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "failed to update password into database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
@@ -328,7 +328,7 @@ func AuthReset(c *gin.Context) {
 		{Key: "$set", Value: record},
 	})
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthReset", "", "failed to update password reset into database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "failed to update password reset into database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
@@ -346,35 +346,35 @@ func AuthLogout(c *gin.Context) {
 
 	tempName := vars.Configuration.GetKey("COOKIE_NAME")
 	if tempName == nil || tempName.String == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogout", "", "invalid cookie name").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "invalid cookie name")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempExpire := vars.Configuration.GetKey("COOKIE_EXPIRE")
 	if tempExpire == nil || tempExpire.Int == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogout", "", "invalid cookie expire").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "invalid cookie expire")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempDomain := vars.Configuration.GetKey("COOKIE_DOMAIN")
 	if tempDomain == nil || tempDomain.String == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogout", "", "invalid cookie domain").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "invalid cookie domain")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempHttpOnly := vars.Configuration.GetKey("COOKIE_HTTP_ONLY")
 	if tempHttpOnly == nil || tempHttpOnly.Bool == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogout", "", "invalid cookie http only").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "invalid cookie http only")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	tempSecure := vars.Configuration.GetKey("COOKIE_SECURE")
 	if tempSecure == nil || tempSecure.Bool == nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "AuthLogout", "", "invalid cookie secure").LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AuthReset", "", "invalid cookie secure")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}

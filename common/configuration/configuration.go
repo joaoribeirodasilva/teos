@@ -9,6 +9,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -24,6 +25,7 @@ type ConfigurationValues struct {
 
 type ConfigRedis struct {
 	Addresses string
+	Username  string
 	Password  string
 	Db        int
 }
@@ -61,15 +63,15 @@ func New(db *database.Db, conf *conf.Conf) *Configuration {
 
 func (c *Configuration) GetAppId() *service_errors.Error {
 
-	slog.Info("reading service identification from database...")
+	slog.Info("[COMMON::CONFIGURATION::GetAppId] reading service identification from database...")
 	application := app_models.AppApp{}
 	coll := c.db.Db.Collection("app_apps")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "appKey", Value: c.conf.Service.Name}}).Decode(&application); err != nil {
-		return service_errors.New(0, 0, "CONFIGURATION", "GetAppId", "", "failed to get service identification from database. ERR: %s", err.Error()).LogError()
+		return service_log.Error(0, 0, "COMMON::CONFIGURATION::GetAppId", "", "failed to get service identification from database. ERR: %s", err.Error())
 	}
 
 	c.ID = application.ID
-	slog.Info(fmt.Sprintf("[CONFIGURATION] service identification is: %s\n", c.ID.Hex()))
+	slog.Info(fmt.Sprintf("[COMMON::CONFIGURATION::GetAppId] service identification is: %s\n", c.ID.Hex()))
 
 	return nil
 
@@ -77,19 +79,19 @@ func (c *Configuration) GetAppId() *service_errors.Error {
 
 func (c *Configuration) Read() error {
 
-	slog.Info("reading service configuration from database...")
+	slog.Info("[COMMON::CONFIGURATION::Read] reading service configuration from database...")
 
 	coll := c.db.Db.Collection("app_configurations")
 	cursor, err := coll.Find(context.TODO(), bson.D{{Key: "appAppId", Value: c.ID}})
 	if err != nil {
 		if err != mongo.ErrNoDocuments {
-			return service_errors.New(0, 0, "CONFIGURATION", "Read", "", "failed to get service configuration from database. ERR: %s", err.Error()).LogError()
+			return service_log.Error(0, 0, "COMMON::CONFIGURATION::Read", "", "failed to get service configuration from database. ERR: %s", err.Error())
 		}
 	}
 
 	configurations := []app_models.AppConfiguration{}
 	if err := cursor.All(context.TODO(), &configurations); err != nil {
-		return service_errors.New(0, 0, "CONFIGURATION", "Read", "", "failed to get service configuration from database. ERR: %s", err.Error()).LogError()
+		return service_log.Error(0, 0, "COMMON::CONFIGURATION::Read", "", "failed to get service configuration from database. ERR: %s", err.Error())
 	}
 
 	tempConfig := make(map[string]ConfigurationValues, 0)
@@ -102,16 +104,16 @@ func (c *Configuration) Read() error {
 			Bool:   config.ValueBool,
 		}
 	}
-	slog.Info(fmt.Sprintf("service configuration read %d values", len(tempConfig)))
+	slog.Info(fmt.Sprintf("[COMMON::CONFIGURATION::Read] service configuration read %d values", len(tempConfig)))
 
 	c.Config = tempConfig
 
 	if appErr := c.loadAppKeys(); appErr != nil {
-		return appErr.LogError()
+		return appErr
 	}
 
 	if appErr := c.loadGlobalConfig(); appErr != nil {
-		return appErr.LogError()
+		return appErr
 	}
 
 	return nil
@@ -126,12 +128,12 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 		if err != mongo.ErrNoDocuments {
 			return nil
 		}
-		return service_errors.New(0, 0, "CONFIGURATION", "loadGlobalConfig", "", "failed to query database. ERR: %s", err.Error()).LogError()
+		return service_log.Error(0, 0, "COMMON::CONFIGURATION::Read", "", "failed to query database. ERR: %s", err.Error())
 	}
 
 	configs := []app_models.AppConfiguration{}
 	if err = cursor.All(context.TODO(), &configs); err != nil {
-		return service_errors.New(0, 0, "CONFIGURATION", "loadGlobalConfig", "", "failed to fetch result. ERR: %s", err.Error()).LogError()
+		return service_log.Error(0, 0, "COMMON::CONFIGURATION::Read", "", "failed to fetch result. ERR: %s", err.Error())
 	}
 
 	for _, config := range configs {
@@ -141,6 +143,11 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 				continue
 			}
 			c.DbHistory.Addresses = *config.ValueString
+		case "REDIS_DB_HIST_USERNAME":
+			if config.ValueString == nil {
+				continue
+			}
+			c.DbHistory.Username = *config.ValueString
 		case "REDIS_DB_HIST_PASSWORD":
 			if config.ValueString == nil {
 				continue
@@ -156,6 +163,11 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 				continue
 			}
 			c.DbLog.Addresses = *config.ValueString
+		case "REDIS_DB_LOG_USERNAME":
+			if config.ValueString == nil {
+				continue
+			}
+			c.DbLog.Username = *config.ValueString
 		case "REDIS_DB_LOG_PASSWORD":
 			if config.ValueString == nil {
 				continue
@@ -171,6 +183,11 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 				continue
 			}
 			c.DbSessions.Addresses = *config.ValueString
+		case "REDIS_DB_SESSIONS_USERNAME":
+			if config.ValueString == nil {
+				continue
+			}
+			c.DbSessions.Username = *config.ValueString
 		case "REDIS_DB_SESSIONS_PASSWORD":
 			if config.ValueString == nil {
 				continue
@@ -186,6 +203,11 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 				continue
 			}
 			c.DbPermissions.Addresses = *config.ValueString
+		case "REDIS_DB_PERMISSIONS_USERNAME":
+			if config.ValueString == nil {
+				continue
+			}
+			c.DbPermissions.Username = *config.ValueString
 		case "REDIS_DB_PERMISSIONS_PASSWORD":
 			if config.ValueString == nil {
 				continue
@@ -210,12 +232,12 @@ func (c *Configuration) loadAppKeys() *service_errors.Error {
 		if err != mongo.ErrNoDocuments {
 			return nil
 		}
-		return service_errors.New(0, 0, "CONFIGURATION", "loadAppKeys", "", "failed to query database. ERR: %s", err.Error()).LogError()
+		return service_log.Error(0, 0, "COMMON::CONFIGURATION::loadAppKeys", "", "failed to query database. ERR: %s", err.Error())
 	}
 
 	applications := []app_models.AppApp{}
 	if err := cursor.All(context.TODO(), &applications); err != nil {
-		return service_errors.New(0, 0, "CONFIGURATION", "loadAppKeys", "", "failed to fetch result. ERR: %s", err.Error()).LogError()
+		return service_log.Error(0, 0, "COMMON::CONFIGURATION::loadAppKeys", "", "failed to fetch result. ERR: %s", err.Error())
 	}
 
 	c.appConfigAppIDs = make(map[primitive.ObjectID]*ConfigApp)
@@ -242,11 +264,11 @@ func (c *Configuration) loadAppKeys() *service_errors.Error {
 			if err != mongo.ErrNoDocuments {
 				return nil
 			}
-			return service_errors.New(0, 0, "CONFIGURATION", "loadAppKeys", "", "failed to query database. ERR: %s", err.Error()).LogError()
+			return service_log.Error(0, 0, "COMMON::CONFIGURATION::loadAppKeys", "", "failed to query database. ERR: %s", err.Error())
 		}
 
 		if err = cursor.All(context.TODO(), &configs); err != nil {
-			return service_errors.New(0, 0, "CONFIGURATION", "loadAppKeys", "", "failed to fetch result. ERR: %s", err.Error()).LogError()
+			return service_log.Error(0, 0, "COMMON::CONFIGURATION::loadAppKeys", "", "failed to fetch result. ERR: %s", err.Error())
 		}
 
 		for _, conf := range configs {

@@ -11,6 +11,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/requests"
 	"github.com/joaoribeirodasilva/teos/common/responses"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joaoribeirodasilva/teos/users/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -35,24 +36,21 @@ func UserUsersList(c *gin.Context) {
 
 	count, err := coll.CountDocuments(context.TODO(), queryString.Filter)
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLER", "UserUsersList", "", "failed to count records. ERR: %s", err.Error())
-		appErr.LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::UserUsersList", "", "failed to count records. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	cursor, err := coll.Find(context.TODO(), queryString.Filter, queryString.Options)
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLER", "UserUsersList", "", "failed to query database. ERR: %s", err.Error())
-		appErr.LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::UserUsersList", "", "failed to query database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	records := []models.UserUser{}
 	if err := cursor.All(context.TODO(), &records); err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLER", "UserUsersList", "", "failed to fetch database cursor. ERR: %s", err.Error())
-		appErr.LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::UserUsersList", "", "failed to fetch database cursor. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -81,7 +79,7 @@ func UserUsersGet(c *gin.Context) {
 
 	id := queryString.ID
 	if id == nil {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "UserUsersGet", "id", "invalid object id in path").LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::UserUsersGet", "id", "invalid object id in path")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
@@ -89,7 +87,7 @@ func UserUsersGet(c *gin.Context) {
 	coll := vars.Db.Db.Collection("user_users")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: id}}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLER", "UserUsersGet", "", "failed to query database. ERR: %s", err.Error()).LogError()
+			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUsersGet", "", "failed to query database. ERR: %s", err.Error())
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
@@ -111,7 +109,7 @@ func UserUsersCreate(c *gin.Context) {
 	record := models.UserUser{}
 
 	if err := c.ShouldBindBodyWithJSON(&record); err != nil {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "UserUsersCreate", "", "failed to bind request. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::UserUsersCreate", "", "failed to bind request. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -119,12 +117,12 @@ func UserUsersCreate(c *gin.Context) {
 	coll := vars.Db.Db.Collection("user_users")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "email", Value: record.Email}}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUsersCreate", "", "failed to query database. ERR: %s", err.Error()).LogError()
+			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUsersCreate", "", "failed to query database. ERR: %s", err.Error())
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
 	} else {
-		appErr := service_errors.New(0, http.StatusConflict, "CONTROLLER", "UserUsersCreate", "email", "an application with the same email already exists. id:%s", record.ID.Hex()).LogError()
+		appErr := service_log.Error(0, http.StatusConflict, "CONTROLLER::UserUsersCreate", "email", "an application with the same email already exists. id:%s", record.ID.Hex())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -143,7 +141,7 @@ func UserUsersCreate(c *gin.Context) {
 
 	result, err := coll.InsertOne(context.TODO(), record)
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusConflict, "CONTROLLER", "UserUsersCreate", "", "failed to insert into database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusConflict, "CONTROLLER::UserUsersCreate", "", "failed to insert into database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -171,14 +169,14 @@ func UserUsersUpdate(c *gin.Context) {
 
 	id := queryString.ID
 	if id == nil {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "UserUsersUpdate", "id", "invalid object id in path").LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::UserUsersUpdate", "", "id", "invalid object id in path")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
 	request := models.UserUser{}
 
 	if err := c.ShouldBindBodyWithJSON(&request); err != nil {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "UserUsersUpdate", "", "failed to bind request. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::UserUsersUpdate", "", "failed to bind request. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -195,12 +193,12 @@ func UserUsersUpdate(c *gin.Context) {
 		}},
 	}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUsersUpdate", "", "failed to query database. ERR: %s", err.Error()).LogError()
+			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUsersUpdate", "", "failed to query database. ERR: %s", err.Error())
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
 	} else {
-		appErr := service_errors.New(0, http.StatusConflict, "CONTROLLER", "UserUsersUpdate", "appKey", "an application with the same appKey already exists. id:%s", record.ID.Hex()).LogError()
+		appErr := service_log.Error(0, http.StatusConflict, "CONTROLLER::UserUsersUpdate", "appKey", "an application with the same appKey already exists. id:%s", record.ID.Hex())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -228,7 +226,7 @@ func UserUsersUpdate(c *gin.Context) {
 	})
 
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUsersUpdate", "", "failed to update into database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUsersUpdate", "", "failed to update into database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
@@ -251,7 +249,7 @@ func UserUsersDelete(c *gin.Context) {
 
 	id := queryString.ID
 	if id == nil {
-		appErr := service_errors.New(0, http.StatusBadRequest, "CONTROLLER", "UserUsersDelete", "id", "invalid object id in path").LogError()
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::UserUsersDelete", "id", "invalid object id in path")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
@@ -259,7 +257,7 @@ func UserUsersDelete(c *gin.Context) {
 	coll := vars.Db.Db.Collection("user_users")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: id}}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
-			appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUsersDelete", "", "failed to query database. ERR: %s", err.Error()).LogError()
+			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUsersDelete", "", "failed to query database. ERR: %s", err.Error())
 			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 			return
 		}
@@ -280,7 +278,7 @@ func UserUsersDelete(c *gin.Context) {
 	})
 
 	if err != nil {
-		appErr := service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUsersDelete", "", "failed to delete from database. ERR: %s", err.Error()).LogError()
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUsersDelete", "", "failed to delete from database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
@@ -291,35 +289,35 @@ func UserUserValidate(record *models.UserUser, create bool) *service_errors.Erro
 
 	validate := validator.New()
 	if err := validate.Var(record.FirstName, "required,gte=2"); err != nil {
-		return service_errors.New(0, http.StatusConflict, "CONTROLLER", "UserUserValidate", "firstName", "invalid user first name").LogError()
+		return service_log.Error(0, http.StatusConflict, "CONTROLLER::UserUserValidate", "firstName", "invalid user first name")
 	}
 
 	if err := validate.Var(record.Surename, "required,gte=2"); err != nil {
-		return service_errors.New(0, http.StatusConflict, "CONTROLLER", "UserUserValidate", "appKey", "invalid user surename").LogError()
+		return service_log.Error(0, http.StatusConflict, "CONTROLLER::UserUserValidate", "appKey", "invalid user surename")
 	}
 
 	if err := validate.Var(record.Email, "required,email"); err != nil {
-		return service_errors.New(0, http.StatusConflict, "CONTROLLER", "UserUserValidate", "appKey", "invalid user email address").LogError()
+		return service_log.Error(0, http.StatusConflict, "CONTROLLER::UserUserValidate", "appKey", "invalid user email address")
 	}
 
 	if err := validate.Var(record.CreatedBy, "required,mongodbId"); err != nil {
-		return service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUserValidate", "createdBy", "invalid created by").LogError()
+		return service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUserValidate", "createdBy", "invalid created by")
 	}
 
 	if err := validate.Var(record.Password, "required"); err != nil {
-		return service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUserValidate", "createdBy", "invalid created by").LogError()
+		return service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUserValidate", "createdBy", "invalid created by")
 	}
 
 	if err := validate.Var(record.CreatedAt, "required"); err != nil {
-		return service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUserValidate", "createdAt", "invalid created date").LogError()
+		return service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUserValidate", "createdAt", "invalid created date")
 	}
 
 	if err := validate.Var(record.CreatedBy, "required,mongodbId"); err != nil {
-		return service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUserValidate", "updatedBy", "invalid updated by").LogError()
+		return service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUserValidate", "updatedBy", "invalid updated by")
 	}
 
 	if err := validate.Var(record.UpdatedAt, "required"); err != nil {
-		return service_errors.New(0, http.StatusInternalServerError, "CONTROLLER", "UserUserValidate", "updatedAt", "invalid updated at").LogError()
+		return service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::UserUserValidate", "updatedAt", "invalid updated at")
 	}
 
 	return nil

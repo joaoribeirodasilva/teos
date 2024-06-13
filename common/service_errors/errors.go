@@ -1,41 +1,26 @@
 package service_errors
 
-import (
-	"fmt"
-	"log/slog"
-)
-
 var AppName string
 
 type Error struct {
-	AppName  string `json:"-"`
 	Code     int    `json:"code"`
 	HttpCode int    `json:"-"`
-	Field    string `json:"field"`
-	Module   string `json:"module"`
-	Function string `json:"function"`
-	message  string `json:"-"`
+	Location string `json:"location"`
+	Fields   string `json:"fields,omitempty"`
 	Message  string `json:"Message"`
 }
 
-func New(code int, httpCode int, module string, function string, field string, message string, args ...any) *Error {
+func New(code int, httpCode int, location string, fields string, message string) *Error {
 	e := new(Error)
-	e.AppName = AppName
 	e.Code = code
+	e.Location = location
+	e.Fields = fields
+	e.Message = message
 	e.HttpCode = httpCode
-	e.Module = module
-	e.Function = function
-	e.Message = fmt.Sprintf(message, args...)
 
 	return e
 }
 
 func (e *Error) Error() string {
-	e.message = fmt.Sprintf("[%s::%s::%s] -> %s", e.AppName, e.Module, e.Function, e.message)
-	return e.message
-}
-
-func (e *Error) LogError() *Error {
-	slog.Error(e.Error())
-	return e
+	return e.Message
 }
