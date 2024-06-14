@@ -21,6 +21,7 @@ type RedisDB struct {
 
 func New(name string, addr string, db int, username string, password string) *RedisDB {
 	r := new(RedisDB)
+	r.Name = name
 	r.Client = nil
 	r.Addr = addr
 	r.Db = db

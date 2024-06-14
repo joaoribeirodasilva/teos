@@ -7,12 +7,20 @@ import (
 
 func RegisterRoutes(router *server.Router) {
 
-	router.Gin.GET("/apps/apps", router.Variables, router.IsLogged, controllers.AppAppsList)
-	router.Gin.GET("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsGet)
-	router.Gin.POST("/apps/apps", router.Variables, router.IsLogged, controllers.AppAppsCreate)
-	router.Gin.PUT("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsUpdate)
+	//router.Gin.GET("/apps/apps", router.Variables, router.IsLogged, controllers.AppAppsList)
+	router.Gin.GET("/apps/apps", router.Variables, controllers.AppAppsList)
+	//router.Gin.GET("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsGet)
+	router.Gin.GET("/apps/apps/:id", router.Variables, controllers.AppAppsGet)
+	//router.Gin.POST("/apps/apps", router.Variables, router.IsLogged, controllers.AppAppsCreate)
+	router.Gin.POST("/apps/apps", router.Variables, controllers.AppAppsCreate)
+
+	//router.Gin.PUT("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsUpdate)
+	router.Gin.PUT("/apps/apps/:id", router.Variables, controllers.AppAppsUpdate)
+
 	router.Gin.PATCH("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsUpdate)
-	router.Gin.DELETE("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsDelete)
+
+	//router.Gin.DELETE("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsDelete)
+	router.Gin.DELETE("/apps/apps/:id", router.Variables, controllers.AppAppsDelete)
 
 	router.Gin.GET("/apps/configurations", router.Variables, router.IsLogged, controllers.AppConfigurationsList)
 	router.Gin.GET("/apps/configurations:id", router.Variables, router.IsLogged, controllers.AppConfigurationsGet)

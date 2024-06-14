@@ -2,8 +2,8 @@ package configuration
 
 import (
 	"context"
+	"time"
 
-	app_models "github.com/joaoribeirodasilva/teos/apps/models"
 	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
@@ -51,6 +51,44 @@ type ConfigApp struct {
 	Port    int
 }
 
+type DataApp struct {
+	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
+	Name        string              `json:"name" bson:"name"`
+	Description *string             `json:"description" bson:"description"`
+	AppKey      string              `json:"appKey" bson:"appKey"`
+	Active      bool                `json:"active" bson:"active"`
+	CreatedBy   primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt   time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy   primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt   time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy   *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
+}
+
+type DataConfiguration struct {
+	ID            primitive.ObjectID  `json:"_id" bson:"_id"`
+	ApplicationID *primitive.ObjectID `json:"appAppId" bson:"appAppId"`
+	Name          string              `json:"name" bson:"name"`
+	Description   *string             `json:"description" bson:"description"`
+	Key           string              `json:"key" bson:"key"`
+	Type          string              `json:"type" bson:"type"`
+	ValueInt      *int                `json:"valueInt" bson:"valueInt"`
+	ValueString   *string             `json:"valueString" bson:"valueString"`
+	ValueFloat    *float64            `json:"valueFloat" bson:"valueFloat"`
+	ValueBool     *bool               `json:"valueBool" bson:"valueBool"`
+	CreatedBy     primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
+	CreatedAt     time.Time           `json:"createdAt" bson:"createdAt"`
+	UpdatedBy     primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
+	UpdatedAt     time.Time           `json:"updatedAt" bson:"updatedAt"`
+	DeletedBy     *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
+	DeletedAt     *time.Time          `json:"deletedAt" bson:"deletedAt"`
+}
+
+type DataConfigurations struct {
+	Count int64                `json:"count"`
+	Rows  *[]DataConfiguration `json:"rows"`
+}
+
 func New(db *database.Db, conf *conf.Conf) *Configuration {
 	return &Configuration{
 		db:     db,
@@ -62,7 +100,7 @@ func New(db *database.Db, conf *conf.Conf) *Configuration {
 func (c *Configuration) GetAppId() *service_errors.Error {
 
 	service_log.Info("COMMON::CONFIGURATION::GetAppId", "reading service identification from database...")
-	application := app_models.AppApp{}
+	application := DataApp{}
 	coll := c.db.Db.Collection("app_apps")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "appKey", Value: c.conf.Service.Name}}).Decode(&application); err != nil {
 		return service_log.Error(0, 0, "COMMON::CONFIGURATION::GetAppId", "", "failed to get service identification from database. ERR: %s", err.Error())
@@ -86,7 +124,7 @@ func (c *Configuration) Read() error {
 		}
 	}
 
-	configurations := []app_models.AppConfiguration{}
+	configurations := []DataConfiguration{}
 	if err := cursor.All(context.TODO(), &configurations); err != nil {
 		return service_log.Error(0, 0, "COMMON::CONFIGURATION::Read", "", "failed to get service configuration from database. ERR: %s", err.Error())
 	}
@@ -129,7 +167,7 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 		return service_log.Error(0, 0, "COMMON::CONFIGURATION::Read", "", "failed to query database. ERR: %s", err.Error())
 	}
 
-	configs := []app_models.AppConfiguration{}
+	configs := []DataConfiguration{}
 	if err = cursor.All(context.TODO(), &configs); err != nil {
 		return service_log.Error(0, 0, "COMMON::CONFIGURATION::Read", "", "failed to fetch result. ERR: %s", err.Error())
 	}
@@ -235,7 +273,7 @@ func (c *Configuration) loadAppKeys() *service_errors.Error {
 		return service_log.Error(0, 0, "COMMON::CONFIGURATION::loadAppKeys", "", "failed to query database. ERR: %s", err.Error())
 	}
 
-	applications := []app_models.AppApp{}
+	applications := []DataApp{}
 	if err := cursor.All(context.TODO(), &applications); err != nil {
 		return service_log.Error(0, 0, "COMMON::CONFIGURATION::loadAppKeys", "", "failed to fetch result. ERR: %s", err.Error())
 	}
@@ -258,7 +296,7 @@ func (c *Configuration) loadAppKeys() *service_errors.Error {
 
 	coll = c.db.Db.Collection("app_configurations")
 	for id, application := range c.appConfigAppIDs {
-		configs := []app_models.AppConfiguration{}
+		configs := []DataConfiguration{}
 		cursor, err := coll.Find(context.TODO(), bson.D{{Key: "_id", Value: id}})
 		if err != nil {
 			if err != mongo.ErrNoDocuments {

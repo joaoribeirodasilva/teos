@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
+	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/requests"
 	"github.com/joaoribeirodasilva/teos/common/service_log"
-	"github.com/joaoribeirodasilva/teos/hist/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )

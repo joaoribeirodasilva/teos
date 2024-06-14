@@ -39,25 +39,26 @@ func InitServiceLog(addr string, db int, username string, password string) error
 }
 
 func Info(location string, message string, args ...any) {
-	logType("INFO", 0, 0, location, "", message, args)
+	logType("INFO", 0, 0, location, "", message, args...)
 }
 
 func Warning(location string, message string, args ...any) {
-	logType("WARNNING", 0, 0, location, "", message, args)
+	logType("WARNNING", 0, 0, location, "", message, args...)
 }
 
 func Error(code int, httpCode int, location string, fields string, message string, args ...any) *service_errors.Error {
+	args = append(args, fields)
 	msg := logType("ERROR", 0, 0, location, fields, message, args)
 	return service_errors.New(code, httpCode, location, fields, msg)
 }
 
 func Debug(location string, message string, args ...any) {
-	logType("DEBUG", 0, 0, location, "", message, args)
+	logType("DEBUG", 0, 0, location, "", message, args...)
 }
 
 func logType(logType string, code int, httpCode int, location string, fields string, message string, args ...any) string {
 
-	msg := makeMesage(location, message, args)
+	msg := makeMesage(location, message, args...)
 	if IsStdout {
 		slog.Info(msg)
 	}
@@ -88,6 +89,7 @@ func logDb(entry *LogEntry) error {
 	return nil
 }
 
-func makeMesage(message string, args ...any) string {
-	return fmt.Sprintf("[%s] - "+message, args)
+func makeMesage(location string, message string, args ...any) string {
+	msg := fmt.Sprintf(message, args...)
+	return fmt.Sprintf("[%s] - %s", location, msg)
 }

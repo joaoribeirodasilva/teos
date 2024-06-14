@@ -11,6 +11,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
 	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type Router struct {
@@ -43,6 +44,15 @@ func (r *Router) Variables(c *gin.Context) {
 	c.Set("configuration", r.Configuration)
 	c.Set("sessionsDb", r.sessionsDB)
 	c.Set("permissionsDb", r.permissionsDB)
+
+	tokenUser := token.User{}
+	tokenUser.ID, _ = primitive.ObjectIDFromHex("666758b475cf5396aea26a13")
+	tokenUser.Name = "Sistema"
+	tokenUser.Surename = "Teos"
+	tokenUser.Email = "admin@teos.com.br"
+	tokenUser.SessionID = primitive.NewObjectID()
+
+	c.Set("user", &tokenUser)
 }
 
 func (r *Router) IsLogged(c *gin.Context) {

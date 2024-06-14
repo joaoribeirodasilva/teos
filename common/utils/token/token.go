@@ -9,7 +9,6 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
 	"github.com/joaoribeirodasilva/teos/common/service_log"
-	"github.com/joaoribeirodasilva/teos/users/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -42,7 +41,7 @@ func New(conf *configuration.Configuration) *Token {
 	return t
 }
 
-func (t *Token) Create(user *models.UserUser, sessionId *primitive.ObjectID) *service_errors.Error {
+func (t *Token) Create(user *User, sessionId *primitive.ObjectID) *service_errors.Error {
 
 	now := time.Now()
 
@@ -61,7 +60,7 @@ func (t *Token) Create(user *models.UserUser, sessionId *primitive.ObjectID) *se
 	sub["id"] = user.ID.Hex()
 	sub["sessionId"] = sessionId.Hex()
 	sub["email"] = user.Email
-	sub["name"] = user.FirstName
+	sub["name"] = user.Name
 	sub["surename"] = user.Surename
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

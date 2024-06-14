@@ -56,15 +56,6 @@ func MustGetAll(c *gin.Context) (*structures.Variables, *service_errors.Error) {
 		return nil, service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::MustGetAll", "configuration", "invalid configuration pointer")
 	}
 
-	v.User = nil
-	a, exists := c.Get("user")
-	if exists {
-		v.User, ok = a.(*token.User)
-		if !ok {
-			return nil, service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::MustGetAll", "auth", "invalid user pointer")
-		}
-	}
-
 	sDb := c.MustGet("sessionsDb")
 	v.SessionsDB, ok = sDb.(*redisdb.RedisDB)
 	if !ok {
@@ -75,6 +66,15 @@ func MustGetAll(c *gin.Context) (*structures.Variables, *service_errors.Error) {
 	v.PermissionsDB, ok = pDb.(*redisdb.RedisDB)
 	if !ok {
 		return nil, service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::MustGetAll", "permissionsDb", "invalid permissions database pointer")
+	}
+
+	v.User = nil
+	a, exists := c.Get("user")
+	if exists {
+		v.User, ok = a.(*token.User)
+		if !ok {
+			return nil, service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::MustGetAll", "auth", "invalid user pointer")
+		}
 	}
 
 	return &v, nil

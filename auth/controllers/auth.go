@@ -11,10 +11,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/joaoribeirodasilva/teos/auth/requests"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
+	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joaoribeirodasilva/teos/common/utils/password"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
-	"github.com/joaoribeirodasilva/teos/users/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -95,7 +95,16 @@ func AuthLogin(c *gin.Context) {
 
 	sessionId := result.InsertedID.(primitive.ObjectID)
 	tokenObject := token.New(vars.Configuration)
-	if appErr := tokenObject.Create(&record, &sessionId); err != nil {
+
+	tokenUser := token.User{
+		ID:        record.ID,
+		SessionID: sessionRecord.ID,
+		Email:     record.Email,
+		Name:      record.FirstName,
+		Surename:  record.Surename,
+	}
+
+	if appErr := tokenObject.Create(&tokenUser, &sessionId); err != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}

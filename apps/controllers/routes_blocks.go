@@ -7,8 +7,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/apps/models"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
+	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/requests"
 	"github.com/joaoribeirodasilva/teos/common/responses"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
@@ -256,7 +256,7 @@ func AppRoutesBlocksDelete(c *gin.Context) {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
-	record := models.AppApp{}
+	record := models.AppAppModel{}
 	coll := vars.Db.Db.Collection("app_apps")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: id}}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
