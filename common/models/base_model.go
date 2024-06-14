@@ -75,7 +75,7 @@ func (m *BaseModel) FindByID(id primitive.ObjectID, model interface{}, opts ...*
 func (m *BaseModel) First(filter interface{}, model interface{}, opts ...*options.FindOneOptions) *service_errors.Error {
 
 	if err := m.collection.FindOne(context.TODO(), filter, opts...).Decode(model); err != nil {
-		if err != mongo.ErrNoDocuments {
+		if err == mongo.ErrNoDocuments {
 			return service_log.Error(0, http.StatusNotFound, m.location+"::First", "", "document not found")
 		}
 		return service_log.Error(0, http.StatusNotFound, m.location+"::First", "", "failed to query database. ERR: %s", err.Error())

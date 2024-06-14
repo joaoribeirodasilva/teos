@@ -6,36 +6,33 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/joaoribeirodasilva/teos/common/redisdb"
+	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type LogEntry struct {
-	EntryID     string    `json:"entryId"`
-	Timestamp   time.Time `json:"timestamp"`
-	Type        string    `json:"type"`
-	Application string    `json:"application"`
-	Location    string    `json:"location"`
-	Fields      string    `json:"fields,omitempty"`
-	Message     string    `json:"message"`
-	Code        int       `json:"code,omitempty"`
-	HttpStatus  int       `json:"httpStatus,omitempty"`
+	ID          primitive.ObjectID `json:"_id"`
+	Timestamp   time.Time          `json:"timestamp"`
+	Type        string             `json:"type"`
+	Application string             `json:"application"`
+	Location    string             `json:"location"`
+	Fields      string             `json:"fields,omitempty"`
+	Message     string             `json:"message"`
+	Code        int                `json:"code,omitempty"`
+	HttpStatus  int                `json:"httpStatus,omitempty"`
 }
 
 var (
 	ApplicationName string
-	LogDatabase     *redisdb.RedisDB
+	LogDatabase     *database.Db
 	IsStdout        bool
 	IsDatabase      bool
 )
 
-func InitServiceLog(addr string, db int, username string, password string) error {
-	LogDatabase := redisdb.New("Logs Database", addr, db, username, password)
-	if err := LogDatabase.Connect(); err != nil {
-		return err
-	}
-	return nil
+func InitServiceLog(appName string, database *database.Db) {
+	ApplicationName = appName
+	LogDatabase = database
 }
 
 func Info(location string, message string, args ...any) {
@@ -65,7 +62,7 @@ func logType(logType string, code int, httpCode int, location string, fields str
 	if IsDatabase && LogDatabase != nil {
 
 		entry := &LogEntry{
-			EntryID:    uuid.NewString(),
+			ID:         primitive.NewObjectID(),
 			Timestamp:  time.Now().UTC(),
 			Type:       logType,
 			Location:   location,
@@ -82,9 +79,9 @@ func logType(logType string, code int, httpCode int, location string, fields str
 
 func logDb(entry *LogEntry) error {
 
-	key := fmt.Sprintf("log_%s", entry.EntryID)
-	if err := LogDatabase.Client.Set(context.Background(), key, entry, 0); err != nil {
-		return err.Err()
+	coll := LogDatabase.Db.Collection("log_logs")
+	if _, err := coll.InsertOne(context.TODO(), entry); err != nil {
+		return err
 	}
 	return nil
 }

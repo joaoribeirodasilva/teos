@@ -1,18 +1,23 @@
 package models
 
 import (
+	"net/http"
 	"time"
 
-	"github.com/joaoribeirodasilva/teos/common/structures"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 const (
 	collectionHistHistory = "hist_history"
+	locationHistHistory   = "COMMON::MODELS::HistHistory"
 )
 
-type HistHistory struct {
+type HistHistoryModel struct {
+	BaseModel
 	ID         primitive.ObjectID  `json:"_id" bson:"_id"`
 	AppAppID   primitive.ObjectID  `json:"appAppId" bson:"appAppId"`
 	AppApp     interface{}         `json:"appApp,omitempty" bson:"-"`
@@ -26,20 +31,58 @@ type HistHistory struct {
 	DeletedBy  *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
 	DeletedAt  *time.Time          `json:"deletedAt" bson:"deletedAt"`
 	NotFound   bool                `json:"-" bson:"-"`
-	values     *structures.RequestValues
 }
 
-type HistHistories struct {
-	Count int64          `json:"count"`
-	Rows  *[]HistHistory `json:"rows"`
+type HistHistoriesModel struct {
+	BaseModels
+	Count int64               `json:"count"`
+	Rows  *[]HistHistoryModel `json:"rows"`
 }
 
-// SetDb sstes the database connection pointer fo this model
-func (m *HistHistory) SetValues(values *structures.RequestValues) {
-	m.values = values
+func NewHistHistoryModel(c *gin.Context) *HistHistoryModel {
+	m := &HistHistoryModel{}
+	m.Init(c, locationAppAppsModel, collectionHistHistory)
+	return m
 }
 
-// GetCollection gets the collection name for the model
-func (m *HistHistory) GetCollection() *mongo.Collection {
-	return m.values.Variables.Db.Db.Collection(collectionHistHistory)
+func NewHistHistoriesModel(c *gin.Context) *HistHistoriesModel {
+	m := &HistHistoriesModel{}
+	m.Init(c, locationAppAppsModel, collectionAppAppsModel)
+	return m
+}
+
+func (m *HistHistoryModel) FillMeta(create bool, delete bool) {
+
+	now := time.Now().UTC()
+
+	if create {
+		m.ID = primitive.NewObjectID()
+		m.CreatedBy = m.GetValues().Variables.User.ID
+		m.CreatedAt = now
+	} else if delete {
+		m.DeletedBy = &m.GetValues().Variables.User.ID
+		m.DeletedAt = &now
+	}
+
+	m.UpdatedBy = m.GetValues().Variables.User.ID
+	m.UpdatedAt = now
+}
+
+func (m *HistHistoryModel) Bind() *service_errors.Error {
+	return m.BaseModel.Bind(m, m.ctx)
+}
+
+func (m *HistHistoryModel) Validate() *service_errors.Error {
+
+	validate := validator.New()
+
+	appApp := NewAppAppModel(m.ctx)
+	if appErr := m.FindByID(m.AppAppID, appApp); appErr != nil {
+		return appErr
+	}
+	if err := validate.Var(m.Collection, "required,gte=1"); err != nil {
+		return service_log.Error(0, http.StatusBadRequest, "MODELS::HistHistoryModel", "collection", "invalid collection")
+	}
+
+	return nil
 }

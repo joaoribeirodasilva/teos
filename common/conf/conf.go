@@ -1,12 +1,12 @@
 package conf
 
 import (
+	"fmt"
 	"log/slog"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joho/godotenv"
 )
 
@@ -65,10 +65,10 @@ func (c *Conf) Read() bool {
 
 	tempStr := strings.TrimSpace(os.Getenv("SERVICE_NAME"))
 	if tempStr == "" {
-		service_log.Error(0, 0, "COMMON::CONF::Read", "", "invalid service name", "")
+		slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "invalid service name"))
 		return false
 	} else if c.Service.Name != tempStr {
-		service_log.Error(0, 0, "COMMON::CONF::Read", "", "the configuration found is for service %s and this service is %s", tempStr, c.Service.Name)
+		slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "the configuration found is for service %s and this service is %s", tempStr, c.Service.Name))
 		return false
 	}
 
@@ -83,7 +83,7 @@ func (c *Conf) Read() bool {
 	if tempStr != "" {
 		tempInt, err := strconv.Atoi(tempStr)
 		if err != nil {
-			service_log.Error(0, 0, "COMMON::CONF::Read", "", "invalid service port found")
+			slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "invalid service port found"))
 			return false
 		}
 		c.Service.BindPort = tempInt
@@ -91,7 +91,7 @@ func (c *Conf) Read() bool {
 
 	tempStr = strings.TrimSpace(os.Getenv("DB_HOST"))
 	if tempStr == "" {
-		service_log.Error(0, 0, "COMMON::CONF::Read", "", "invalid database host address found")
+		slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "invalid database host address found"))
 		return false
 	}
 	c.Database.Host = tempStr
@@ -101,7 +101,7 @@ func (c *Conf) Read() bool {
 	if tempStr != "" {
 		tempInt, err := strconv.Atoi(tempStr)
 		if err != nil {
-			service_log.Error(0, 0, "COMMON::CONF::Read", "", "invalid database port found")
+			slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "invalid database port found"))
 			return false
 		}
 		c.Database.Port = tempInt
@@ -136,7 +136,7 @@ func (c *Conf) Read() bool {
 	if tempStr != "" {
 		tempInt, err := strconv.Atoi(tempStr)
 		if err != nil {
-			service_log.Error(0, 0, "COMMON::CONF::Read", "", "invalid service port found")
+			slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "invalid service port found"))
 			return false
 		}
 		c.Redis.Port = tempInt
