@@ -43,7 +43,7 @@ func AuthLogin(c *gin.Context) {
 		return
 	}
 
-	record := models.UserUser{}
+	record := models.UserUserModel{}
 
 	coll := vars.Db.Db.Collection("user_users")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "email", Value: email}}).Decode(&record); err != nil {
@@ -74,7 +74,7 @@ func AuthLogin(c *gin.Context) {
 		return
 	}
 
-	sessionRecord := models.UserSession{}
+	sessionRecord := models.UserSessionModel{}
 
 	now := time.Now().UTC()
 	sessionRecord.ID = primitive.NewObjectID()
@@ -104,7 +104,7 @@ func AuthLogin(c *gin.Context) {
 		Surename:  record.Surename,
 	}
 
-	if appErr := tokenObject.Create(&tokenUser, &sessionId); err != nil {
+	if appErr := tokenObject.Create(&tokenUser, &sessionId); appErr != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
@@ -174,7 +174,7 @@ func AuthForgot(c *gin.Context) {
 		return
 	}
 
-	record := models.UserUser{}
+	record := models.UserUserModel{}
 	coll := vars.Db.Db.Collection("user_users")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "email", Value: request.Email}}).Decode(&record); err != nil {
 		if err != mongo.ErrNoDocuments {
@@ -205,7 +205,7 @@ func AuthForgot(c *gin.Context) {
 		return
 	}
 
-	resetRecord := models.UserReset{
+	resetRecord := models.UserResetModel{
 		UserResetTypeID: resetTypeId,
 		UserUserID:      record.ID,
 		ResetKey:        resetKey,
@@ -260,7 +260,7 @@ func AuthReset(c *gin.Context) {
 		return
 	}
 
-	record := models.UserReset{}
+	record := models.UserResetModel{}
 
 	coll := vars.Db.Db.Collection("user_resets")
 	if err := coll.FindOne(context.TODO(), bson.D{
@@ -286,7 +286,7 @@ func AuthReset(c *gin.Context) {
 		return
 	}
 
-	userRecord := models.UserUser{}
+	userRecord := models.UserUserModel{}
 
 	usersColl := vars.Db.Db.Collection("user_users")
 	if err := usersColl.FindOne(context.TODO(), bson.D{{Key: "_id", Value: record.UserUserID}}).Decode(&userRecord); err != nil {
