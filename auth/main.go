@@ -60,9 +60,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := service_log.InitServiceLog(serviceConfiguration.DbLog.Addresses, serviceConfiguration.DbLog.Db, serviceConfiguration.DbLog.Username, serviceConfiguration.DbLog.Password); err != nil {
-		os.Exit(1)
-	}
+	service_log.InitServiceLog(SERVICE_NAME, db)
 
 	service_log.IsDatabase = true
 	service_log.IsStdout = true
