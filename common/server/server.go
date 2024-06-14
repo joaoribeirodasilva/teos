@@ -3,7 +3,6 @@ package server
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -37,8 +36,7 @@ func (s *Server) Listen() error {
 		Handler: s.Service.Handler(),
 	}
 
-	slog.Info(fmt.Sprintf("[COMMON::SERVER::Listen] starting server at %s", srv.Addr))
-
+	service_log.Info("COMMON::SERVER::Listen", "starting server at %s", srv.Addr)
 	go func() {
 		// service connections
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -54,7 +52,7 @@ func (s *Server) Listen() error {
 	// kill -9 is syscall. SIGKILL but can"t be catch, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	slog.Info("[COMMON::SERVER::Listen] shuting down server ...")
+	service_log.Info("COMMON::SERVER::Listen", "shuting down server ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -64,9 +62,9 @@ func (s *Server) Listen() error {
 	// catching ctx.Done(). timeout of 5 seconds.
 	select {
 	case <-ctx.Done():
-		slog.Info("[COMMON::SERVER::Listen] wait for 5 seconds...")
+		service_log.Info("COMMON::SERVER::Listen", "wait for 5 seconds...")
 	}
-	slog.Info("[COMMON::SERVER::Listen] server terminated")
+	service_log.Info("COMMON::SERVER::Listen", "server terminated")
 
 	return nil
 }

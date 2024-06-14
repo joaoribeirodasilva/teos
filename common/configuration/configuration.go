@@ -2,8 +2,6 @@ package configuration
 
 import (
 	"context"
-	"fmt"
-	"log/slog"
 
 	app_models "github.com/joaoribeirodasilva/teos/apps/models"
 	"github.com/joaoribeirodasilva/teos/common/conf"
@@ -63,7 +61,7 @@ func New(db *database.Db, conf *conf.Conf) *Configuration {
 
 func (c *Configuration) GetAppId() *service_errors.Error {
 
-	slog.Info("[COMMON::CONFIGURATION::GetAppId] reading service identification from database...")
+	service_log.Info("COMMON::CONFIGURATION::GetAppId", "reading service identification from database...")
 	application := app_models.AppApp{}
 	coll := c.db.Db.Collection("app_apps")
 	if err := coll.FindOne(context.TODO(), bson.D{{Key: "appKey", Value: c.conf.Service.Name}}).Decode(&application); err != nil {
@@ -71,15 +69,14 @@ func (c *Configuration) GetAppId() *service_errors.Error {
 	}
 
 	c.ID = application.ID
-	slog.Info(fmt.Sprintf("[COMMON::CONFIGURATION::GetAppId] service identification is: %s\n", c.ID.Hex()))
+	service_log.Info("COMMON::CONFIGURATION::GetAppId", "service identification is: %s\n", c.ID.Hex())
 
 	return nil
-
 }
 
 func (c *Configuration) Read() error {
 
-	slog.Info("[COMMON::CONFIGURATION::Read] reading service configuration from database...")
+	service_log.Info("COMMON::CONFIGURATION::Read", "reading service configuration from database...")
 
 	coll := c.db.Db.Collection("app_configurations")
 	cursor, err := coll.Find(context.TODO(), bson.D{{Key: "appAppId", Value: c.ID}})
@@ -104,7 +101,7 @@ func (c *Configuration) Read() error {
 			Bool:   config.ValueBool,
 		}
 	}
-	slog.Info(fmt.Sprintf("[COMMON::CONFIGURATION::Read] service configuration read %d values", len(tempConfig)))
+	service_log.Info("COMMON::CONFIGURATION::Read", "service configuration read %d values", len(tempConfig))
 
 	c.Config = tempConfig
 
@@ -122,6 +119,7 @@ func (c *Configuration) Read() error {
 
 func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 
+	service_log.Info("COMMON::CONFIGURATION::loadGlobalConfig", "reading global configuration from database...")
 	coll := c.db.Db.Collection("app_configurations")
 	cursor, err := coll.Find(context.TODO(), bson.D{{Key: "appAppId", Value: nil}})
 	if err != nil {
@@ -221,11 +219,13 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 		}
 	}
 
+	service_log.Info("COMMON::CONFIGURATION::loadGlobalConfig", "global configuration read from database")
 	return nil
 }
 
 func (c *Configuration) loadAppKeys() *service_errors.Error {
 
+	service_log.Info("COMMON::CONFIGURATION::loadAppKeys", "reading application keys from database...")
 	coll := c.db.Db.Collection("app_apps")
 	cursor, err := coll.Find(context.TODO(), bson.D{{}})
 	if err != nil {
@@ -299,6 +299,8 @@ func (c *Configuration) loadAppKeys() *service_errors.Error {
 	for id, application := range c.appConfigAppIDs {
 		c.appConfigAppAuths[application.AuthKey] = c.appConfigAppIDs[id]
 	}
+
+	service_log.Info("COMMON::CONFIGURATION::loadAppKeys", "application keys reed from database...")
 
 	return nil
 }

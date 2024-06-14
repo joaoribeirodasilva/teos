@@ -69,18 +69,6 @@ func (r *Router) IsLogged(c *gin.Context) {
 
 	c.Set("user", token.User)
 
-	//fmt.Printf("Cookie: %s\n", cookie)
-
-	// fmt.Println("router is logged")
-	/* 	auth := token.New(r.conf)
-	   	if !auth.IsValid(c.GetHeader("Authorization")) {
-	   		c.AbortWithStatus(http.StatusForbidden)
-	   		c.Abort()
-	   		return
-	   	}
-
-	   	c.Set("auth", auth.User) */
-
 	c.Next()
 }
 

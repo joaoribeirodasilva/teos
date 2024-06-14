@@ -38,11 +38,11 @@ func InitServiceLog(addr string, db int, username string, password string) error
 	return nil
 }
 
-func Info(location string, message string, args ...string) {
+func Info(location string, message string, args ...any) {
 	logType("INFO", 0, 0, location, "", message, args)
 }
 
-func Warning(location string, message string, args ...string) {
+func Warning(location string, message string, args ...any) {
 	logType("WARNNING", 0, 0, location, "", message, args)
 }
 
@@ -51,7 +51,7 @@ func Error(code int, httpCode int, location string, fields string, message strin
 	return service_errors.New(code, httpCode, location, fields, msg)
 }
 
-func Debug(location string, message string, args ...string) {
+func Debug(location string, message string, args ...any) {
 	logType("DEBUG", 0, 0, location, "", message, args)
 }
 

@@ -8,23 +8,34 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
+	"github.com/joaoribeirodasilva/teos/common/requests"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
 	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/common/structures"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
 )
 
-type Variables struct {
-	Conf          *conf.Conf
-	Db            *database.Db
-	Configuration *configuration.Configuration
-	User          *token.User
-	SessionsDB    *redisdb.RedisDB
-	PermissionsDB *redisdb.RedisDB
+func GetValues(c *gin.Context) (*structures.RequestValues, *service_errors.Error) {
+
+	vars, appErr := MustGetAll(c)
+	if appErr != nil {
+		return nil, appErr
+	}
+
+	queryString := requests.NewQueryString(c)
+	if appErr := queryString.Bind(); appErr != nil {
+		return nil, appErr
+	}
+
+	return &structures.RequestValues{
+		Variables: vars,
+		Query:     *queryString,
+	}, nil
 }
 
-func MustGetAll(c *gin.Context) (*Variables, *service_errors.Error) {
+func MustGetAll(c *gin.Context) (*structures.Variables, *service_errors.Error) {
 
-	v := Variables{}
+	v := structures.Variables{}
 	ok := false
 
 	co := c.MustGet("conf")
@@ -46,7 +57,7 @@ func MustGetAll(c *gin.Context) (*Variables, *service_errors.Error) {
 	}
 
 	v.User = nil
-	a, exists := c.Get("auth")
+	a, exists := c.Get("user")
 	if exists {
 		v.User, ok = a.(*token.User)
 		if !ok {

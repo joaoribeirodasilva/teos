@@ -13,6 +13,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/responses"
 	"github.com/joaoribeirodasilva/teos/common/service_errors"
 	"github.com/joaoribeirodasilva/teos/common/service_log"
+	history_models "github.com/joaoribeirodasilva/teos/hist/models"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,134 +21,84 @@ import (
 
 func AppAppsList(c *gin.Context) {
 
-	vars, appErr := controllers.MustGetAll(c)
+	values, appErr := controllers.GetValues(c)
 	if appErr != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	queryString := requests.NewQueryString(c)
-	if err := queryString.Bind(); err != nil {
-		c.AbortWithStatusJSON(err.HttpCode, err)
-		return
-	}
-
-	coll := vars.Db.Db.Collection("app_apps")
-
-	count, err := coll.CountDocuments(context.TODO(), queryString.Filter)
-	if err != nil {
-		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::AppAppsList", "", "failed to count records. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
-	cursor, err := coll.Find(context.TODO(), queryString.Filter, queryString.Options)
-	if err != nil {
-		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::AppAppsList", "", "failed to query database. ERR: %s", err.Error())
+	docs := &models.AppApps{}
+	docs.SetValues(values)
+
+	if appErr := docs.FindAll(values.Query.Filter); appErr != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
-
-	records := []models.AppApp{}
-	if err := cursor.All(context.TODO(), &records); err != nil {
-		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::AppAppsList", "", "failed to fetch database cursor. ERR: %s", err.Error())
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-		return
-	}
-
-	response := models.AppApps{
-		Count: count,
-		Rows:  &records,
-	}
-
-	c.JSON(http.StatusOK, &response)
-}
-
-func AppAppsGet(c *gin.Context) {
-
-	vars, appErr := controllers.MustGetAll(c)
-	if appErr != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	queryString := requests.NewQueryString(c)
-	if appErr := queryString.Bind(); appErr != nil {
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-		return
-	}
-
-	id := queryString.ID
-	if id == nil {
-		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AppAppsGet", "id", "invalid object id in path")
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-	}
-
-	record := models.AppApp{}
-	coll := vars.Db.Db.Collection("app_apps")
-	if err := coll.FindOne(context.TODO(), bson.D{{Key: "_id", Value: id}}).Decode(&record); err != nil {
-		if err != mongo.ErrNoDocuments {
-			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLER::AppAppsGet", "", "failed to query database. ERR: %s", err.Error())
-			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-			return
-		}
+	if docs.Rows == nil {
 		c.AbortWithStatus(http.StatusNotFound)
 		return
 	}
 
-	c.JSON(http.StatusOK, &record)
+	c.JSON(http.StatusOK, &docs)
+}
+
+func AppAppsGet(c *gin.Context) {
+
+	values, appErr := controllers.GetValues(c)
+	if appErr != nil {
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	id := values.Query.ID
+	if id == nil {
+		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AppAppsGet", "id", "invalid object id in path")
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	doc := &models.AppApp{}
+	doc.SetValues(values)
+
+	if appErr := doc.FindByID(*id); appErr != nil {
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		return
+	}
+
+	if doc.NotFound {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	c.JSON(http.StatusOK, &doc)
 }
 
 func AppAppsCreate(c *gin.Context) {
 
-	vars, appErr := controllers.MustGetAll(c)
+	values, appErr := controllers.GetValues(c)
 	if appErr != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	record := models.AppApp{}
-
-	if err := c.ShouldBindBodyWithJSON(&record); err != nil {
-		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AppAppsCreate", "", "failed to bind request. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
-	coll := vars.Db.Db.Collection("app_apps")
-	if err := coll.FindOne(context.TODO(), bson.D{{Key: "appKey", Value: record.AppKey}}).Decode(&record); err != nil {
-		if err != mongo.ErrNoDocuments {
-			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AppAppsCreate", "", "failed to query database. ERR: %s", err.Error())
-			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-			return
-		}
-	} else {
-		appErr := service_log.Error(0, http.StatusConflict, "CONTROLLER::AppAppsCreate", "appKey", "an application with the same appKey already exists. id:%s", record.ID.Hex())
+	doc := models.AppApp{}
+	doc.SetValues(values)
+
+	// Binds the received JSON with the model and validates it
+	if appErr := doc.Bind(c); appErr != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
-	if appErr := AppAppValidate(&record, true); appErr != nil {
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-		return
-	}
+	// TODO: how to do if user is nill to bring the system user
 
-	now := time.Now().UTC()
-	record.ID = primitive.NewObjectID()
-	record.CreatedBy = vars.User.ID
-	record.CreatedAt = now
-	record.UpdatedBy = vars.User.ID
-	record.UpdatedAt = now
-
-	result, err := coll.InsertOne(context.TODO(), record)
-	if err != nil {
-		appErr := service_log.Error(0, http.StatusConflict, "CONTROLLER::AppAppsCreate", "", "failed to insert into database. ERR: %s", err.Error())
+	if appErr := doc.Create(); appErr != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
 	response := responses.ResponseCreated{
-		ID: result.InsertedID,
+		ID: doc.ID,
 	}
 
 	c.JSON(http.StatusCreated, response)
@@ -155,75 +106,30 @@ func AppAppsCreate(c *gin.Context) {
 
 func AppAppsUpdate(c *gin.Context) {
 
-	vars, appErr := controllers.MustGetAll(c)
+	values, appErr := controllers.GetValues(c)
 	if appErr != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	queryString := requests.NewQueryString(c)
-	if appErr := queryString.Bind(); appErr != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
-	id := queryString.ID
+	id := values.Query.ID
 	if id == nil {
 		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AppAppsUpdate", "id", "invalid object id in path")
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
-	request := models.AppApp{}
+	doc := models.AppApp{}
+	doc.SetValues(values)
 
-	if err := c.ShouldBindBodyWithJSON(&request); err != nil {
-		appErr := service_log.Error(0, http.StatusBadRequest, "CONTROLLER::AppAppsUpdate", "", "failed to bind request. ERR: %s", err.Error())
+	// Binds the received JSON with the model and validates it
+	if appErr := doc.Bind(c); appErr != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
 	}
 
-	record := models.AppApp{}
-	coll := vars.Db.Db.Collection("app_apps")
-	if err := coll.FindOne(context.TODO(), bson.D{
-		{Key: "$and", Value: bson.A{
-			bson.D{{Key: "appKey", Value: request.AppKey}},
-			bson.D{{Key: "_id", Value: bson.D{
-				{Key: "$ne", Value: id},
-			},
-			}},
-		}},
-	}).Decode(&record); err != nil {
-		if err != mongo.ErrNoDocuments {
-			appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AppAppsUpdate", "", "failed to query database. ERR: %s", err.Error())
-			c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-			return
-		}
-	} else {
-		appErr := service_log.Error(0, http.StatusConflict, "CONTROLLER::AppAppsUpdate", "appKey", "an application with the same appKey already exists. id:%s", record.ID.Hex())
+	if appErr := doc.Update(*id); appErr != nil {
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 		return
-	}
-
-	record.Name = request.Name
-	record.Description = request.Description
-	record.AppKey = request.AppKey
-	record.Active = request.Active
-	record.UpdatedBy = vars.User.ID
-	record.UpdatedAt = time.Now().UTC()
-
-	if appErr := AppAppValidate(&record, true); appErr != nil {
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
-		return
-	}
-
-	_, err := coll.UpdateOne(context.TODO(), bson.D{
-		{Key: "_id", Value: id},
-	}, bson.D{
-		{Key: "$set", Value: record},
-	})
-
-	if err != nil {
-		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AppAppsUpdate", "", "failed to update into database. ERR: %s", err.Error())
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
 	c.Status(http.StatusOK)
@@ -261,6 +167,8 @@ func AppAppsDelete(c *gin.Context) {
 		return
 	}
 
+	oldRecord := record
+
 	now := time.Now().UTC()
 	record.UpdatedBy = vars.User.ID
 	record.UpdatedAt = now
@@ -275,6 +183,24 @@ func AppAppsDelete(c *gin.Context) {
 
 	if err != nil {
 		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AppAppsDelete", "", "failed to delete from database. ERR: %s", err.Error())
+		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+	}
+
+	history := history_models.HistHistory{
+		ID:         primitive.NewObjectID(),
+		AppAppID:   vars.Configuration.ID,
+		Collection: "app_apps",
+		OriginalID: record.ID,
+		Data:       oldRecord,
+		CreatedBy:  vars.User.ID,
+		CreatedAt:  now,
+		UpdatedBy:  vars.User.ID,
+		UpdatedAt:  now,
+	}
+
+	collHist := vars.Db.Db.Collection("hist_history")
+	if _, err := collHist.InsertOne(context.TODO(), &history); err != nil {
+		appErr := service_log.Error(0, http.StatusInternalServerError, "CONTROLLER::AppAppsDelete", "", "failed to insert record history into database. ERR: %s", err.Error())
 		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
 	}
 
