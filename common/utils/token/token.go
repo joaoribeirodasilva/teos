@@ -150,16 +150,11 @@ func (t *Token) IsValid(tokenString string) bool {
 
 func (t *Token) parseToken(jwtToken string) *service_errors.Error {
 
-	tempSecret := t.conf.GetKey("SECRET_KEY")
-	if tempSecret == nil || tempSecret.String == nil {
-		return service_log.Error(0, http.StatusInternalServerError, "COMMON::TOKEN::parseToken", "Create", "", "invalid secret")
-	}
-
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, OK := token.Method.(*jwt.SigningMethodHMAC); !OK {
 			return nil, errors.New("")
 		}
-		return []byte(*tempSecret.String), nil
+		return []byte(t.conf.Secret), nil
 	})
 
 	if err != nil {

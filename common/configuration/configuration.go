@@ -37,6 +37,7 @@ type Configuration struct {
 	DbLog             ConfigRedis
 	DbPermissions     ConfigRedis
 	DbSessions        ConfigRedis
+	Secret            string
 	appConfAppKeys    map[string]*ConfigApp
 	appConfigAppAuths map[string]*ConfigApp
 	appConfigAppIDs   map[primitive.ObjectID]*ConfigApp
@@ -254,6 +255,11 @@ func (c *Configuration) loadGlobalConfig() *service_errors.Error {
 				continue
 			}
 			c.DbPermissions.Db = *config.ValueInt
+		case "SECRET_KEY":
+			if config.ValueString == nil {
+				continue
+			}
+			c.Secret = *config.ValueString
 		}
 	}
 
