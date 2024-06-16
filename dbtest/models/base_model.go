@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"sort"
 	"time"
 
@@ -85,7 +86,7 @@ func (bm *BaseModel) Validate() error { return nil }
 func (bm *BaseModel) AssignValues(to interface{}) error { return nil }
 
 // func (bm *BaseModel) Normalize(to interface{}) error { return nil }
-func (bm *BaseModel) Normalize(to interface{}) *bson.D {
+func (bm *BaseModel) Normalize(to interface{}) (*bson.D, error) {
 
 	fromMap := structs.Map(bm)
 	toMap := structs.Map(to)
@@ -98,6 +99,15 @@ func (bm *BaseModel) Normalize(to interface{}) *bson.D {
 	toMap["deletedBy"] = fromMap["deletedBy"]
 	toMap["deletedAt"] = fromMap["deletedAt"]
 	delete(toMap, "BaseModel")
+
+	b, err := json.Marshal(toMap)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := json.Unmarshal(b, to); err != nil {
+		return nil, err
+	}
 
 	keys := make([]string, 0, len(toMap))
 	for k := range toMap {
@@ -112,5 +122,5 @@ func (bm *BaseModel) Normalize(to interface{}) *bson.D {
 	}
 
 	//dump.PrintJson(toMap)
-	return &d
+	return &d, nil
 }

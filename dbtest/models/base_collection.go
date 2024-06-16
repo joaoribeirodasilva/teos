@@ -204,7 +204,10 @@ func (bc *BaseCollection) Create(uniqueFilter interface{}, model iBaseModel, opt
 		return err
 	}
 
-	doc := model.Normalize(model)
+	doc, err := model.Normalize(model)
+	if err != nil {
+		return err
+	}
 
 	if _, err := bc.Collection.InsertOne(bc.options.Ctx, doc, opts...); err != nil {
 		return err
@@ -257,7 +260,10 @@ func (bc *BaseCollection) Update(id *primitive.ObjectID, uniqueFilter interface{
 		return err
 	}
 
-	doc := model.Normalize(model)
+	doc, err := model.Normalize(model)
+	if err != nil {
+		return err
+	}
 
 	if _, err := bc.Collection.UpdateOne(bc.options.Ctx, bson.D{{Key: "_id", Value: id}}, doc); err != nil {
 		return err

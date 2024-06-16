@@ -47,5 +47,5 @@ type iBaseModel interface {
 	GetCollectionName() string
 	Validate() error
 	AssignValues(to interface{}) error
-	Normalize(to interface{}) *bson.D
+	Normalize(to interface{}) (*bson.D, error)
 }

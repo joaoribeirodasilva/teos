@@ -10,6 +10,17 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 )
 
+type DbOptions struct {
+	Ctx      context.Context
+	Name     string
+	Dsn      string
+	Protocol string
+	Hosts    string
+	Username string
+	Password string
+	Options  string
+}
+
 type Db struct {
 	client   *mongo.Client
 	database *mongo.Database
@@ -21,31 +32,6 @@ type Db struct {
 	password string
 	options  string
 	ctx      context.Context
-}
-
-func New(ctx context.Context, name string, dsn string, protocol string, hosts string, username string, password string, options string) *Db {
-
-	db := &Db{}
-
-	if ctx == nil {
-		db.ctx = context.TODO()
-	}
-	db.dsn = dsn
-	db.name = name
-	if db.dsn == "" {
-		db.protocol = protocol
-		db.hosts = hosts
-		db.username = username
-		db.password = password
-		db.options = options
-		if db.username != "" && db.password != "" {
-			db.dsn = fmt.Sprintf("%s://%s:%s@%s/?%s", db.protocol, db.username, db.password, db.hosts, db.options)
-		} else {
-			db.dsn = fmt.Sprintf("%s://%s/?%s", db.protocol, db.hosts, db.options)
-		}
-	}
-
-	return db
 }
 
 func (db *Db) Connect() error {
