@@ -60,3 +60,7 @@ func GetAvailable() *[]string {
 
 	return &keys
 }
+
+func GetServices() *map[string]*RedisDB {
+	return &dbs
+}
