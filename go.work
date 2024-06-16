@@ -4,6 +4,7 @@ use (
 	./apps
 	./auth
 	./common
+	./dbtest
 	./hist
 	./test
 	./users
