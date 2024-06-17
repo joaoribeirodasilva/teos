@@ -1,14 +1,12 @@
 package models
 
 import (
-	"net/http"
+	"errors"
 	"slices"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -18,7 +16,6 @@ var (
 
 const (
 	collectionAppRoute = "app_routes"
-	locationAppRoute   = "COMMON::MODELS::AppRoute"
 )
 
 type AppRouteModel struct {
@@ -40,76 +37,68 @@ type AppRouteModel struct {
 	DeletedAt        *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type AppRouteModels struct {
-	BaseModels
-	Count int64            `json:"count"`
-	Rows  *[]AppRouteModel `json:"rows"`
+func (m *AppRouteModel) GetCollectionName() string {
+	return collectionAppRoute
 }
 
-func NewAppRouteModel(c *gin.Context) *AppRouteModel {
-	m := &AppRouteModel{}
-	m.Init(c, locationAppRoute, collectionAppRoute)
-	return m
-}
+func (m *AppRouteModel) AssignValues(to interface{}) error {
 
-func NewAppRoutesModel(c *gin.Context) *AppRouteModel {
-	m := &AppRouteModel{}
-	m.Init(c, locationAppRoute, collectionAppRoute)
-	return m
-}
-
-func (m *AppRouteModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*AppRouteModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.AppRoutesBlockID = m.AppRoutesBlockID
+	dest.Name = m.Name
+	dest.Description = m.Description
+	dest.Method = m.Method
+	dest.Route = m.Route
+	dest.Open = m.Open
+	dest.Active = m.Active
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *AppRouteModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *AppRouteModel) Validate() *service_errors.Error {
+func (m *AppRouteModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
 
-	appRoutesBlockID := NewAppRoutesBlockModels(m.ctx)
-	if appErr := m.FindByID(m.AppRoutesBlockID, appRoutesBlockID); appErr != nil {
-		return appErr
-	}
+	// TODO: Validate related
+	/* 	appRoutesBlockID := NewAppRoutesBlockModels(m.ctx)
+	   	if appErr := m.FindByID(m.AppRoutesBlockID, appRoutesBlockID); appErr != nil {
+	   		return appErr
+	   	} */
 
 	if err := validate.Var(m.Name, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "name", "invalid name")
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
 	}
 
 	if err := validate.Var(m.Method, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "method", "invalid method")
+		fields := []string{"method"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid method ", err, nil)
 	}
 
 	if !slices.Contains(validMethods, m.Method) {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "method", "invalid method")
+		fields := []string{"method"}
+		err := errors.New("invalid method")
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid method ", err, nil)
 	}
 
 	if err := validate.Var(m.Route, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "route", "invalid route")
+		fields := []string{"route"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid route ", err, nil)
 	}
 
 	if err := validate.Var(m.Open, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "open", "invalid open")
+		fields := []string{"open"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid open ", err, nil)
 	}
 
 	if err := validate.Var(m.Active, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "active", "invalid active")
+		fields := []string{"active"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
 
 	return nil

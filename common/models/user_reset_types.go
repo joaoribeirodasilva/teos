@@ -1,19 +1,15 @@
 package models
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
 	collectionUserResetType = "user_reset_types"
-	locationUserResetType   = "COMMON::MODELS::UserResetType"
 )
 
 type UserResetTypeModel struct {
@@ -29,50 +25,32 @@ type UserResetTypeModel struct {
 	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type UserResetTypesModel struct {
-	BaseModels
-	Count int64             `json:"count"`
-	Rows  *[]UserResetModel `json:"rows"`
+func (m *UserResetTypeModel) GetCollectionName() string {
+	return collectionUserResetType
 }
 
-func NewUserResetTypeModel(c *gin.Context) *UserResetTypeModel {
-	m := &UserResetTypeModel{}
-	m.Init(c, locationUserResetType, collectionUserResetType)
-	return m
-}
+func (m *UserResetTypeModel) AssignValues(to interface{}) error {
 
-func NewUserResetTypesModel(c *gin.Context) *UserResetTypesModel {
-	m := &UserResetTypesModel{}
-	m.Init(c, locationUserResetType, collectionUserResetType)
-	return m
-}
-
-func (m *UserResetTypeModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*UserResetTypeModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.Name = m.Name
+	dest.Description = m.Description
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *UserResetTypeModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *UserResetTypeModel) Validate() *service_errors.Error {
+func (m *UserResetTypeModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
+
 	if err := validate.Var(m.Name, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::UserResetTypeModel", "name", "invalid name")
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
 	}
+
 	return nil
 }

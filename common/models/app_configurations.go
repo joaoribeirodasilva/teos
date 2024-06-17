@@ -1,14 +1,12 @@
 package models
 
 import (
-	"net/http"
+	"errors"
 	"slices"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -18,7 +16,6 @@ var (
 
 const (
 	collectionAppConfiguration = "app_configurations"
-	locationAppConfiguration   = "COMMON::MODELS::AppConfiguration"
 )
 
 type AppConfigurationModel struct {
@@ -42,67 +39,59 @@ type AppConfigurationModel struct {
 	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type AppConfigurationsModel struct {
-	BaseModels
-	Count int64                    `json:"count"`
-	Rows  *[]AppConfigurationModel `json:"rows"`
+func (m *AppConfigurationModel) GetCollectionName() string {
+	return collectionAppConfiguration
 }
 
-func NewAppConfigurationModel(c *gin.Context) *AppConfigurationModel {
-	m := &AppConfigurationModel{}
-	m.Init(c, locationAppConfiguration, collectionAppConfiguration)
-	return m
-}
+func (m *AppConfigurationModel) AssignValues(to interface{}) error {
 
-func NewBaseModels(c *gin.Context) *AppConfigurationsModel {
-	m := &AppConfigurationsModel{}
-	m.Init(c, locationAppConfiguration, collectionAppConfiguration)
-	return m
-}
-
-func (m *AppConfigurationModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*AppConfigurationModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.AppAppID = m.AppAppID
+	dest.Name = m.Name
+	dest.Description = m.Description
+	dest.Key = m.Key
+	dest.Type = m.Type
+	dest.ValueInt = m.ValueInt
+	dest.ValueString = m.ValueString
+	dest.ValueFloat = m.ValueFloat
+	dest.ValueBool = m.ValueBool
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *AppConfigurationModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *AppConfigurationModel) Validate() *service_errors.Error {
+func (m *AppConfigurationModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
 
-	if m.AppAppID != nil {
+	// TODO: Validate related
+	/* 	if m.AppAppID != nil {
 		appApp := NewAppAppModel(m.ctx)
 		if appErr := m.FindByID(*m.AppAppID, appApp); appErr != nil {
 			return appErr
 		}
-	}
+	} */
 
 	if err := validate.Var(m.Name, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppConfigurationModel", "name", "invalid name")
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
 	}
 	if err := validate.Var(m.Key, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppConfigurationModel", "key", "invalid key")
+		fields := []string{"key"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid key ", err, nil)
 	}
 	if err := validate.Var(m.Type, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppConfigurationModel", "type", "invalid type")
+		fields := []string{"type"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid type ", err, nil)
 	}
 	if !slices.Contains(validTypes, m.Type) {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppConfigurationModel", "type", "invalid type")
+		fields := []string{"type"}
+		err := errors.New("invalid field type")
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid type ", err, nil)
 	}
 
 	return nil

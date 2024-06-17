@@ -1,150 +1,127 @@
 package models
 
 import (
-	"context"
-	"net/http"
+	"encoding/json"
+	"sort"
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/joaoribeirodasilva/teos/common/controllers"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
-	"github.com/joaoribeirodasilva/teos/common/structures"
+	"github.com/fatih/structs"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 type BaseModel struct {
-	ID             primitive.ObjectID  `json:"_id" bson:"_id"`
-	CreatedBy      primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
-	CreatedAt      time.Time           `json:"createdAt" bson:"createdAt"`
-	UpdatedBy      primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
-	UpdatedAt      time.Time           `json:"updatedAt" bson:"updatedAt"`
-	DeletedBy      *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
-	DeletedAt      *time.Time          `json:"deletedAt" bson:"deletedAt"`
-	values         *structures.RequestValues
-	location       string
+	ID             primitive.ObjectID  `json:"_id" bson:"_id" structs:"_id"`
+	CreatedBy      primitive.ObjectID  `json:"createdBy" bson:"createdBy" structs:"createdBy"`
+	CreatedAt      time.Time           `json:"createdAt" bson:"createdAt" structs:"createdAt"`
+	UpdatedBy      primitive.ObjectID  `json:"updatedBy" bson:"updatedBy" structs:"updatedBy"`
+	UpdatedAt      time.Time           `json:"updatedAt" bson:"updatedAt" structs:"updatedAt"`
+	DeletedBy      *primitive.ObjectID `json:"deletedBy" bson:"deletedBy" structs:"deletedBy"`
+	DeletedAt      *time.Time          `json:"deletedAt" bson:"deletedAt" structs:"deletedAt"`
 	collectionName string
-	collection     *mongo.Collection
-	ctx            *gin.Context
 }
 
-func (m *BaseModel) Init(c *gin.Context, location string, collectionName string) *service_errors.Error {
-	values, appErr := controllers.GetValues(c)
-	if appErr != nil {
-		return appErr
-	}
-	m.ctx = c
-	m.values = values
-	m.collectionName = collectionName
-	m.location = location
-	m.collection = m.values.Variables.Db.Db.Collection(m.collectionName)
-
-	return nil
+func (bm *BaseModel) GetCollectionName() string {
+	return bm.collectionName
 }
 
-func (m *BaseModel) GetValues() *structures.RequestValues {
-	return m.values
+func (bm *BaseModel) GetID() *primitive.ObjectID {
+	return &bm.ID
 }
 
-func (m *BaseModel) Bind(model interface{}, c *gin.Context) *service_errors.Error {
-
-	// Binds the received JSON with the document
-	if err := m.ctx.ShouldBindBodyWithJSON(model); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, m.location+"::Bind", "", "failed to bind request. ERR: %s", err.Error())
-	}
-
-	return nil
+func (bm *BaseModel) SetID(id primitive.ObjectID) {
+	bm.ID = id
 }
 
-func (m *BaseModel) FindByQueryID(model interface{}, opts ...*options.FindOneOptions) *service_errors.Error {
-
-	if m.values.Query.ID == nil {
-		return service_log.Error(0, http.StatusNotFound, m.location+"::FinfQueryByID", "", "document not found")
-	}
-	return m.FindByID(*m.values.Query.ID, model, opts...)
+func (bm *BaseModel) GetCreatedBy() primitive.ObjectID {
+	return bm.CreatedBy
 }
 
-func (m *BaseModel) FindByID(id primitive.ObjectID, model interface{}, opts ...*options.FindOneOptions) *service_errors.Error {
-
-	return m.First(bson.D{{Key: "_id", Value: id}}, model, opts...)
+func (bm *BaseModel) SetCreatedBy(id primitive.ObjectID) {
+	bm.CreatedBy = id
 }
 
-func (m *BaseModel) First(filter interface{}, model interface{}, opts ...*options.FindOneOptions) *service_errors.Error {
-
-	if err := m.collection.FindOne(context.TODO(), filter, opts...).Decode(model); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return service_log.Error(0, http.StatusNotFound, m.location+"::First", "", "document not found")
-		}
-		return service_log.Error(0, http.StatusNotFound, m.location+"::First", "", "failed to query database. ERR: %s", err.Error())
-	}
-	return nil
+func (bm *BaseModel) GetCreatedAt() time.Time {
+	return bm.CreatedAt
 }
 
-func (m *BaseModel) Create(uniqueFilter bson.D, model interface{}, unique string, opts ...*options.InsertOneOptions) *service_errors.Error {
-
-	exists := BaseModel{}
-	exists.Init(m.ctx, m.location, m.collectionName)
-
-	if err := m.collection.FindOne(context.TODO(), uniqueFilter).Decode(&exists); err != nil {
-		if err != mongo.ErrNoDocuments {
-			return service_log.Error(0, http.StatusInternalServerError, m.location+"::Create", "", "failed to query database. ERR: %s", err.Error())
-		}
-	} else {
-		return service_log.Error(0, http.StatusConflict, m.location+"::Create", "", "document already exists with id: %s", exists.ID.Hex())
-	}
-
-	if _, err := m.collection.InsertOne(context.TODO(), model, opts...); err != nil {
-		return service_log.Error(0, http.StatusInternalServerError, m.location+"::Create", "", "failed to insert document into database. ERR: %s", err.Error())
-	}
-
-	return nil
+func (bm *BaseModel) SetCreatedAt(timestamp time.Time) {
+	bm.CreatedAt = timestamp
 }
 
-func (m *BaseModel) Update(filter bson.D, model interface{}, unique string, opts ...*options.InsertOneOptions) *service_errors.Error {
-
-	if _, err := m.collection.UpdateOne(context.TODO(), filter, bson.D{
-		{Key: "$set", Value: model},
-	}); err != nil {
-		return service_log.Error(0, http.StatusInternalServerError, m.location+"::Update", "", "failed to update into database. ERR: %s", err.Error())
-	}
-	return nil
+func (bm *BaseModel) GetUpdatedBy() primitive.ObjectID {
+	return bm.UpdatedBy
 }
 
-func (m *BaseModel) Delete(id primitive.ObjectID, opts ...*options.DeleteOptions) *service_errors.Error {
+func (bm *BaseModel) SetUpdatedBy(id primitive.ObjectID) {
+	bm.UpdatedBy = id
+}
 
-	exists := BaseModel{}
-	exists.Init(m.ctx, m.location, m.collectionName)
-	if err := m.collection.FindOne(context.TODO(), bson.D{{Key: "_id", Value: id}}).Decode(&exists); err != nil {
-		if err == mongo.ErrNoDocuments {
-			return service_log.Error(0, http.StatusInternalServerError, m.location+"::Delete", "", "document not found")
-		} else {
-			return service_log.Error(0, http.StatusInternalServerError, m.location+"::Delete", "", "failed to query database. ERR: %s", err.Error())
-		}
+func (bm *BaseModel) GetUpdatedAt() time.Time {
+	return bm.UpdatedAt
+}
+
+func (bm *BaseModel) SetUpdatedAt(timestamp time.Time) {
+	bm.UpdatedAt = timestamp
+}
+
+func (bm *BaseModel) GetDeletedBy() *primitive.ObjectID {
+	return bm.DeletedBy
+}
+
+func (bm *BaseModel) SetDeletedBy(id *primitive.ObjectID) {
+	bm.DeletedBy = id
+}
+
+func (bm *BaseModel) GetDeletedAt() *time.Time {
+	return bm.DeletedAt
+}
+
+func (bm *BaseModel) SetDeletedAt(timestamp *time.Time) {
+	bm.DeletedAt = timestamp
+}
+
+func (bm *BaseModel) Validate() *logger.HttpError { return nil }
+
+func (bm *BaseModel) AssignValues(to interface{}) error { return nil }
+
+// func (bm *BaseModel) Normalize(to interface{}) error { return nil }
+func (bm *BaseModel) Normalize(to interface{}) (*bson.D, error) {
+
+	fromMap := structs.Map(bm)
+	toMap := structs.Map(to)
+
+	toMap["_id"] = fromMap["_id"]
+	toMap["createdBy"] = fromMap["createdBy"]
+	toMap["createdAt"] = fromMap["createdAt"]
+	toMap["updatedBy"] = fromMap["updatedBy"]
+	toMap["updatedAt"] = fromMap["updatedAt"]
+	toMap["deletedBy"] = fromMap["deletedBy"]
+	toMap["deletedAt"] = fromMap["deletedAt"]
+	delete(toMap, "BaseModel")
+
+	b, err := json.Marshal(toMap)
+	if err != nil {
+		return nil, err
 	}
 
-	if _, err := m.collection.DeleteOne(context.TODO(), bson.D{{Key: "_id", Value: id}}); err != nil {
-		return service_log.Error(0, http.StatusInternalServerError, m.location+"::Delete", "", "failed to delete document from database. ERR: %s", err.Error())
+	if err := json.Unmarshal(b, to); err != nil {
+		return nil, err
 	}
 
-	return nil
-}
+	keys := make([]string, 0, len(toMap))
+	for k := range toMap {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
 
-func (m *BaseModel) GetLocation() string {
-	return m.location
-}
+	d := bson.D{}
+	for _, k := range keys {
+		val := primitive.E{Key: k, Value: toMap[k]}
+		d = append(d, val)
+	}
 
-func (m *BaseModel) SetLocation(location string) {
-	m.location = location
-}
-
-func (m *BaseModel) SetCollectionName(collectionName string) {
-	m.collectionName = collectionName
-	//m.collection = m.values.Variables.Db.Db.Collection(m.collectionName)
-}
-
-func (m *BaseModel) Validate(validateMeta bool) *service_errors.Error {
-	return nil
+	//dump.PrintJson(toMap)
+	return &d, nil
 }

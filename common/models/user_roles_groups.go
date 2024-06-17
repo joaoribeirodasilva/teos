@@ -1,19 +1,15 @@
 package models
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
-	collectionUserRolesGroup = "user_roles_grups"
-	locationUserRolesGroup   = "COMMON::MODELS::UserRolesGroup"
+	collectionUserRolesGroup = "user_roles_groups"
 )
 
 type UserRolesGroupModel struct {
@@ -32,62 +28,45 @@ type UserRolesGroupModel struct {
 	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type UserRolesGroupsModel struct {
-	BaseModels
-	Count int64                  `json:"count"`
-	Rows  *[]UserRolesGroupModel `json:"rows"`
+func (m *UserRolesGroupModel) GetCollectionName() string {
+	return collectionUserRolesGroup
 }
 
-func NewUserRolesGroupModel(c *gin.Context) *UserRolesGroupModel {
-	m := &UserRolesGroupModel{}
-	m.Init(c, locationUserRolesGroup, collectionUserRolesGroup)
-	return m
-}
+func (m *UserRolesGroupModel) AssignValues(to interface{}) error {
 
-func NewUserRolesGroupsModel(c *gin.Context) *UserRolesGroupsModel {
-	m := &UserRolesGroupsModel{}
-	m.Init(c, locationUserRolesGroup, collectionUserRolesGroup)
-	return m
-}
-
-func (m *UserRolesGroupModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*UserRolesGroupModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.UserRoleID = m.UserRoleID
+	dest.UserGroupID = m.UserGroupID
+	dest.Active = m.Active
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *UserRolesGroupModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *UserRolesGroupModel) Validate() *service_errors.Error {
+func (m *UserRolesGroupModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
 
+	// TODO: Validate related
 	if err := validate.Var(m.Active, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::UserRolesGroupModel", "avtive", "invalid active")
+		fields := []string{"active"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
 
-	userRole := NewUserRoleModel(m.ctx)
-	if appErr := m.FindByID(m.UserRoleID, userRole); appErr != nil {
-		return appErr
-	}
+	/*
+		userRole := NewUserRoleModel(m.ctx)
+		if appErr := m.FindByID(m.UserRoleID, userRole); appErr != nil {
+			return appErr
+		}
 
-	userGroup := NewUserGroupModel(m.ctx)
-	if appErr := m.FindByID(m.UserGroupID, userGroup); appErr != nil {
-		return appErr
-	}
-
+		userGroup := NewUserGroupModel(m.ctx)
+		if appErr := m.FindByID(m.UserGroupID, userGroup); appErr != nil {
+			return appErr
+		}
+	*/
 	return nil
 }

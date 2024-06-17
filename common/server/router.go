@@ -48,7 +48,7 @@ func (r *Router) Variables(c *gin.Context) {
 	tokenUser := token.User{}
 	tokenUser.ID, _ = primitive.ObjectIDFromHex("666758b475cf5396aea26a13")
 	tokenUser.Name = "Sistema"
-	tokenUser.Surename = "Teos"
+	tokenUser.Surname = "Teos"
 	tokenUser.Email = "admin@teos.com.br"
 	tokenUser.SessionID = primitive.NewObjectID()
 

@@ -1,19 +1,15 @@
 package models
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
 	collectionAppAppsModel = "app_apps"
-	locationAppAppsModel   = "COMMON::MODELS::AppAppModel"
 )
 
 type AppAppModel struct {
@@ -31,54 +27,37 @@ type AppAppModel struct {
 	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type AppAppsModel struct {
-	BaseModels
-	Count int64
-	Rows  []AppAppModel
+func (m *AppAppModel) GetCollectionName() string {
+	return collectionAppAppsModel
 }
 
-func NewAppAppModel(c *gin.Context) *AppAppModel {
-	m := &AppAppModel{}
-	m.Init(c, locationAppAppsModel, collectionAppAppsModel)
-	return m
-}
+func (m *AppAppModel) AssignValues(to interface{}) error {
 
-func NewAppAppsModel(c *gin.Context) *AppAppsModel {
-	m := &AppAppsModel{}
-	m.Init(c, locationAppAppsModel, collectionAppAppsModel)
-	return m
-}
-
-func (m *AppAppModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*AppAppModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.Name = m.Name
+	dest.Description = m.Description
+	dest.AppKey = m.AppKey
+	dest.Active = m.Active
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *AppAppModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *AppAppModel) Validate() *service_errors.Error {
+func (m *AppAppModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
 	if err := validate.Var(m.Name, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppApp", "name", "invalid application name")
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
 	}
 
 	if err := validate.Var(m.AppKey, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppApp", "appKey", "invalid application key")
+		fields := []string{"appKey"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid appKey ", err, nil)
 	}
 
 	return nil

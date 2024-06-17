@@ -3,14 +3,12 @@ package models
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
 	collectionUserSession = "user_sessions"
-	locationUserSession   = "COMMON::MODELS::UserSession"
 )
 
 type UserSessionModel struct {
@@ -26,51 +24,30 @@ type UserSessionModel struct {
 	DeletedAt  *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type UserSessionsModel struct {
-	BaseModels
-	Count int64               `json:"count"`
-	Rows  *[]UserSessionModel `json:"rows"`
+func (m *UserSessionModel) GetCollectionName() string {
+	return collectionUserSession
 }
 
-func NewUserSessionModel(c *gin.Context) *UserSessionModel {
-	m := &UserSessionModel{}
-	m.Init(c, locationUserSession, collectionUserSession)
-	return m
-}
+func (m *UserSessionModel) AssignValues(to interface{}) error {
 
-func NewUserSessionsModel(c *gin.Context) *UserSessionsModel {
-	m := &UserSessionsModel{}
-	m.Init(c, locationUserSession, collectionUserSession)
-	return m
-}
-
-func (m *UserSessionModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*UserSessionModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.UserUserID = m.UserUserID
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *UserSessionModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
+func (m *UserSessionModel) Validate() *logger.HttpError {
 
-func (m *UserSessionModel) Validate() *service_errors.Error {
-
-	user := NewUserUserModel(m.ctx)
-	if appErr := m.FindByID(m.UserUserID, user); appErr != nil {
-		return appErr
-	}
+	// TODO: Validate related
+	/* 	user := NewUserUserModel(m.ctx)
+	   	if appErr := m.FindByID(m.UserUserID, user); appErr != nil {
+	   		return appErr
+	   	} */
 
 	return nil
 }

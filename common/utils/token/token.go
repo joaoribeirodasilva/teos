@@ -17,7 +17,7 @@ type User struct {
 	SessionID primitive.ObjectID
 	Email     string
 	Name      string
-	Surename  string
+	Surname   string
 }
 
 type Token struct {
@@ -61,7 +61,7 @@ func (t *Token) Create(user *User, sessionId *primitive.ObjectID) *service_error
 	sub["sessionId"] = sessionId.Hex()
 	sub["email"] = user.Email
 	sub["name"] = user.Name
-	sub["surename"] = user.Surename
+	sub["surename"] = user.Surname
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"iss": iss,
@@ -142,7 +142,7 @@ func (t *Token) IsValid(tokenString string) bool {
 		SessionID: sessionid,
 		Email:     email,
 		Name:      nome,
-		Surename:  surename,
+		Surname:   surename,
 	}
 
 	return true

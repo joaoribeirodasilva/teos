@@ -1,26 +1,22 @@
 package models
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
 	collectionUserUser = "user_users"
-	locationUserUser   = "COMMON::MODELS::UserUser"
 )
 
 type UserUserModel struct {
 	BaseModel     `json:"-" bson:"-"`
 	ID            primitive.ObjectID  `json:"_id" bson:"_id"`
 	FirstName     string              `json:"firstName" bson:"firstName"`
-	Surename      string              `json:"surename" bson:"surename"`
+	Surname       string              `json:"surname" bson:"surname"`
 	Email         string              `json:"email" bson:"email"`
 	Password      *string             `json:"password,omitempty" bson:"password"`
 	Terms         *time.Time          `json:"terms" bson:"terms"`
@@ -35,66 +31,55 @@ type UserUserModel struct {
 	DeletedAt     *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type UserUsersModel struct {
-	BaseModels
-	Count int64            `json:"count"`
-	Rows  *[]UserUserModel `json:"rows"`
+func (m *UserUserModel) GetCollectionName() string {
+	return collectionUserUser
 }
 
-func NewUserUserModel(c *gin.Context) *UserUserModel {
-	m := &UserUserModel{}
-	m.Init(c, locationUserUser, collectionUserUser)
-	return m
-}
+func (m *UserUserModel) AssignValues(to interface{}) error {
 
-func NewUserUsersModel(c *gin.Context) *UserUsersModel {
-	m := &UserUsersModel{}
-	m.Init(c, locationUserUser, collectionUserUser)
-	return m
-}
-
-func (m *UserUserModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*UserUserModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.FirstName = m.FirstName
+	dest.Email = m.Email
+	dest.Password = m.Password
+	dest.Terms = m.Terms
+	dest.AvatarUrl = m.AvatarUrl
+	dest.EmailVerified = m.EmailVerified
+	dest.Active = m.Active
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *UserUserModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *UserUserModel) Validate() *service_errors.Error {
+func (m *UserUserModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
-	if err := validate.Var(m.FirstName, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::UserUserModel", "name", "invalid first name")
+	if err := validate.Var(m.FirstName, "required"); err != nil {
+		fields := []string{"firstName"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid firstName ", err, nil)
 	}
 
-	if err := validate.Var(m.Surename, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::UserUserModel", "surename", "invalid surename")
+	if err := validate.Var(m.Surname, "required,gte=1"); err != nil {
+		fields := []string{"surname"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid surname ", err, nil)
 	}
 
 	if err := validate.Var(m.Email, "required,email"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::UserUserModel", "email", "invalid email")
+		fields := []string{"email"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid email ", err, nil)
 	}
 
 	if err := validate.Var(m.Password, "required,gte=6"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::UserUserModel", "password", "invalid password")
+		fields := []string{"password"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid password ", err, nil)
 	}
 
 	if err := validate.Var(m.Terms, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::UserUserModel", "terms", "invalid password")
+		fields := []string{"terms"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid terms ", err, nil)
 	}
 
 	return nil

@@ -3,14 +3,13 @@ package models
 import (
 	"time"
 
-	"github.com/gin-gonic/gin"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
+	"github.com/go-playground/validator/v10"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
 	collectionUserGroup = "user_groups"
-	locationUserGroup   = "COMMON::MODELS::UserGroup"
 )
 
 type UserGroupModel struct {
@@ -29,54 +28,40 @@ type UserGroupModel struct {
 	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type UserGroupsModel struct {
-	BaseModels
-	Count int64             `json:"count"`
-	Rows  *[]UserGroupModel `json:"rows"`
+func (m *UserGroupModel) GetCollectionName() string {
+	return collectionUserGroup
 }
 
-func NewUserGroupModel(c *gin.Context) *UserGroupModel {
-	m := &UserGroupModel{}
-	m.Init(c, locationUserGroup, collectionUserGroup)
-	return m
-}
+func (m *UserGroupModel) AssignValues(to interface{}) error {
 
-func NewUserGroupsModel(c *gin.Context) *UserGroupsModel {
-	m := &UserGroupsModel{}
-	m.Init(c, locationUserGroup, collectionUserGroup)
-	return m
-}
-
-func (m *UserGroupModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*UserGroupModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.ParentID = m.ParentID
+	dest.Name = m.Name
+	dest.Description = m.Description
+	dest.GroupPath = m.GroupPath
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *UserGroupModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
+func (m *UserGroupModel) Validate() *logger.HttpError {
 
-func (m *UserGroupModel) Validate() *service_errors.Error {
-
-	//validate := validator.New()
-
-	if m.ParentID != nil {
+	validate := validator.New()
+	// TODO: Validate related
+	/* 	if m.ParentID != nil {
 		userGroup := NewUserGroupModel(m.ctx)
 		if appErr := m.FindByID(*m.ParentID, userGroup); appErr != nil {
 			return appErr
 		}
+	} */
+
+	if err := validate.Var(m.Name, "required,gte=1"); err != nil {
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
 	}
 
 	return nil

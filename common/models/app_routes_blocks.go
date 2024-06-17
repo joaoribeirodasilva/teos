@@ -1,19 +1,15 @@
 package models
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
 	collectionAppRoutesBlock = "app_routes_blocks"
-	locationAppRoutesBlock   = "COMMON::MODELS::AppRoutesBlock"
 )
 
 type AppRoutesBlockModel struct {
@@ -33,64 +29,50 @@ type AppRoutesBlockModel struct {
 	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-type AppRoutesBlocksModels struct {
-	BaseModel
-	Count int64                  `json:"count"`
-	Rows  *[]AppRoutesBlockModel `json:"rows"`
+func (m *AppRoutesBlockModel) GetCollectionName() string {
+	return collectionAppRoutesBlock
 }
 
-func NewAppRoutesBlockModels(c *gin.Context) *AppRoutesBlockModel {
-	m := &AppRoutesBlockModel{}
-	m.Init(c, locationAppRoutesBlock, collectionAppRoutesBlock)
-	return m
-}
+func (m *AppRoutesBlockModel) AssignValues(to interface{}) error {
 
-func NewAppRoutesBlocksModels(c *gin.Context) *AppRoutesBlocksModels {
-	m := &AppRoutesBlocksModels{}
-	m.Init(c, locationAppRoutesBlock, collectionAppRoutesBlock)
-	return m
-}
-
-func (m *AppRoutesBlockModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*AppRoutesBlockModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.AppAppID = m.AppAppID
+	dest.Name = m.Name
+	dest.Description = m.Description
+	dest.Route = m.Route
+	dest.Active = m.Active
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *AppRoutesBlockModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *AppRoutesBlockModel) Validate() *service_errors.Error {
+func (m *AppRoutesBlockModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
 
-	appApp := NewAppAppModel(m.ctx)
-	if appErr := m.FindByID(m.AppAppID, appApp); appErr != nil {
-		return appErr
-	}
+	// TODO: Validate related
+	/* 	appApp := NewAppAppModel(m.ctx)
+	   	if appErr := m.FindByID(m.AppAppID, appApp); appErr != nil {
+	   		return appErr
+	   	} */
 
 	if err := validate.Var(m.Name, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "name", "invalid name")
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
 	}
 
 	if err := validate.Var(m.Route, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "route", "invalid route")
+		fields := []string{"route"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid route ", err, nil)
 	}
 
 	if err := validate.Var(m.Active, "required"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::AppRouteModel", "active", "invalid active")
+		fields := []string{"active"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
 
 	return nil

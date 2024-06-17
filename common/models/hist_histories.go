@@ -1,19 +1,15 @@
 package models
 
 import (
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 const (
 	collectionHistHistory = "hist_history"
-	locationHistHistory   = "COMMON::MODELS::HistHistory"
 )
 
 type HistHistoryModel struct {
@@ -33,55 +29,39 @@ type HistHistoryModel struct {
 	NotFound   bool                `json:"-" bson:"-"`
 }
 
-type HistHistoriesModel struct {
-	BaseModels
-	Count int64               `json:"count"`
-	Rows  *[]HistHistoryModel `json:"rows"`
+func (m *HistHistoryModel) GetCollectionName() string {
+	return collectionHistHistory
 }
 
-func NewHistHistoryModel(c *gin.Context) *HistHistoryModel {
-	m := &HistHistoryModel{}
-	m.Init(c, locationAppAppsModel, collectionHistHistory)
-	return m
-}
+func (m *HistHistoryModel) AssignValues(to interface{}) error {
 
-func NewHistHistoriesModel(c *gin.Context) *HistHistoriesModel {
-	m := &HistHistoriesModel{}
-	m.Init(c, locationAppAppsModel, collectionAppAppsModel)
-	return m
-}
-
-func (m *HistHistoryModel) FillMeta(create bool, delete bool) {
-
-	now := time.Now().UTC()
-
-	if create {
-		m.ID = primitive.NewObjectID()
-		m.CreatedBy = m.GetValues().Variables.User.ID
-		m.CreatedAt = now
-	} else if delete {
-		m.DeletedBy = &m.GetValues().Variables.User.ID
-		m.DeletedAt = &now
+	dest, ok := to.(*HistHistoryModel)
+	if !ok {
+		return ErrWrongModelType
 	}
+	dest.ID = m.ID
+	dest.AppAppID = m.AppAppID
+	dest.Collection = m.Collection
+	dest.OriginalID = m.OriginalID
+	dest.Data = m.Data
+	to = dest
 
-	m.UpdatedBy = m.GetValues().Variables.User.ID
-	m.UpdatedAt = now
+	return nil
 }
 
-func (m *HistHistoryModel) Bind() *service_errors.Error {
-	return m.BaseModel.Bind(m, m.ctx)
-}
-
-func (m *HistHistoryModel) Validate() *service_errors.Error {
+func (m *HistHistoryModel) Validate() *logger.HttpError {
 
 	validate := validator.New()
 
-	appApp := NewAppAppModel(m.ctx)
-	if appErr := m.FindByID(m.AppAppID, appApp); appErr != nil {
-		return appErr
-	}
+	// TODO: Validate related
+	/* 	appApp := NewAppAppModel(m.ctx)
+	   	if appErr := m.FindByID(m.AppAppID, appApp); appErr != nil {
+	   		return appErr
+	   	} */
+
 	if err := validate.Var(m.Collection, "required,gte=1"); err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "MODELS::HistHistoryModel", "collection", "invalid collection")
+		fields := []string{"collection"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid collection ", err, nil)
 	}
 
 	return nil
