@@ -1,8 +1,8 @@
 package requests
 
 import (
+	"errors"
 	"fmt"
-	"net/http"
 	"net/url"
 	"slices"
 	"strconv"
@@ -10,8 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -89,7 +88,7 @@ func NewQueryString(c *gin.Context) *QueryString {
 	return q
 }
 
-func (q *QueryString) Bind() *service_errors.Error {
+func (q *QueryString) Bind() *logger.HttpError {
 
 	var err error
 
@@ -111,20 +110,27 @@ func (q *QueryString) Bind() *service_errors.Error {
 	var tempInt int
 	tempInt, err = strconv.Atoi(strPage)
 	if err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::Bind", "", "invalid page requested (must be an integer)")
+		err := errors.New("invalid page requested (must be an integer)")
+		fields := []string{"p"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "", err, nil)
 	}
 
 	q.page = int64(tempInt)
 
 	tempInt, err = strconv.Atoi(strPageSize)
 	if err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::Bind", "", "invalid page size requested (must be an integer)")
+		err := errors.New("invalid page size requested (must be an integer)")
+		fields := []string{"ps"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "", err, nil)
 	}
+
 	q.pageSize = int64(tempInt)
 
 	q.all, err = strconv.ParseBool(strAll)
 	if err != nil {
-		return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::Bind", "", "invalid all records requested (must be a boolean)")
+		err := errors.New("invalid all records requested (must be a boolean)")
+		fields := []string{"a"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "", err, nil)
 	}
 
 	q.Related, err = strconv.ParseBool(strRelated)
@@ -159,14 +165,15 @@ func (q *QueryString) Bind() *service_errors.Error {
 	}
 
 	if err := q.getID(strId); err != nil {
-		service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::Bind", "", "invalid record id. ERR: %s", err.Error())
+		err := errors.New("invalid record id")
+		return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 	}
 
 	q.getPagination()
 	q.getSort()
 
-	if appErr := q.parseFilter(fullQuery); appErr != nil {
-		return appErr
+	if httpErr := q.parseFilter(fullQuery); httpErr != nil {
+		return httpErr
 	}
 
 	//fmt.Printf("%+v\n", query)
@@ -174,7 +181,7 @@ func (q *QueryString) Bind() *service_errors.Error {
 	return nil
 }
 
-func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
+func (q *QueryString) parseFilter(filters url.Values) *logger.HttpError {
 
 	filterArray := []primitive.D{}
 
@@ -200,25 +207,30 @@ func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
 		fmt.Printf("Key: %s, Val: %+v\n", key, filter)
 		params := strings.Split(filter[0], ",")
 		if len(params) != 2 {
-			return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "invalid filter '%s' parameter count", key)
+			err := fmt.Errorf("invalid filter '%s' parameter count", key)
+			return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 		}
 
 		field := key
 		if field == "" {
-			return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "invalid filter field")
+			err := errors.New("invalid filter field")
+			return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 		}
 
 		value := params[1]
 		operation, ok := operations[params[0]]
 		if !ok {
-			return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "invalid filter '%s' operation", key)
+			err := fmt.Errorf("invalid filter '%s' operation", key)
+			return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 		}
 
 		values := strings.Split(value, "|")
 		if len(values) != 1 && params[0] != OPERATION_BETWEEN {
-			return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "invalid filter '%s' value", key)
+			err := fmt.Errorf("invalid filter '%s' value", key)
+			return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 		} else if len(values) != 2 && params[1] == OPERATION_BETWEEN {
-			return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "invalid filter '%s' between value", key)
+			err := fmt.Errorf("invalid filter '%s' between value", key)
+			return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 		}
 
 		dataType := TYPE_STRING
@@ -237,13 +249,13 @@ func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
 				dataType = TYPE_BOOL
 				valStart = *isBool
 			}
-		} else if dataType == TYPE_STRING {
+		} else if dataType == TYPE_NUMERIC {
 			number := q.isNumeric(values[0])
 			if number != nil {
 				dataType = TYPE_NUMERIC
 				valStart = *number
 			}
-		} else if dataType == TYPE_STRING {
+		} else if dataType == TYPE_DATE {
 			date := q.isISODate(values[0])
 			if date != nil {
 				dataType = TYPE_DATE
@@ -253,13 +265,16 @@ func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
 
 		if len(values) == 2 {
 			if dataType != TYPE_NULL {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', a null can't be used with 2 values in the same operation", key)
+				err := fmt.Errorf("filter '%s', a null can't be used with 2 values in the same operation", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 			if dataType != TYPE_BOOL {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', a boolean can't be used with 2 values in the same operation", key)
+				err := fmt.Errorf("filter '%s', a boolean can't be used with 2 values in the same operation", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 			if dataType != TYPE_BOOL {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', a string can't be used with 2 values in the same operation", key)
+				err := fmt.Errorf("filter '%s', a string can't be used with 2 values in the same operation", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 
 			if operation == OPERATION_BETWEEN {
@@ -268,18 +283,21 @@ func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
 				if date != nil {
 					valEnd = *date
 				} else if dataType != TYPE_DATE {
-					return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', invalid second date value", key)
+					err := fmt.Errorf("filter '%s', invalid second date value", key)
+					return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 				}
 
 				number := q.isNumeric(values[1])
 				if number != nil {
 					valEnd = *number
 				} else if dataType != TYPE_NUMERIC {
-					return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', invalid second numeric value", key)
+					err := fmt.Errorf("filter '%s', invalid second numeric value", key)
+					return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 				}
 
 			} else {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', use of 2 values outside a between operation", key)
+				err := fmt.Errorf("filter '%s', use of 2 values outside a between operation", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 		}
 
@@ -287,7 +305,8 @@ func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
 		switch params[1] {
 		case OPERATION_BETWEEN:
 			if dataType != TYPE_DATE && dataType != TYPE_NUMERIC {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', between operations can only be used with data types numeric and date", key)
+				err := fmt.Errorf("filter '%s', between operations can only be used with data types numeric and date", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 			filt = primitive.D{
 				{Key: "$and", Value: primitive.A{
@@ -297,17 +316,20 @@ func (q *QueryString) parseFilter(filters url.Values) *service_errors.Error {
 			}
 		case OPERATION_STARTSWITH:
 			if dataType != TYPE_STRING {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', start with operations can only be used with data type string", key)
+				err := fmt.Errorf("filter '%s', start with operations can only be used with data type string", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: "^" + values[0], Options: "i"}}}}}
 		case OPERATION_ENDSWITH:
 			if dataType != TYPE_STRING {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', end with operations can only be used with data type string", key)
+				err := fmt.Errorf("filter '%s', end with operations can only be used with data type string", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: values[0] + "$", Options: "i"}}}}}
 		case OPERATION_CONTAINS:
 			if dataType != TYPE_STRING {
-				return service_log.Error(0, http.StatusBadRequest, "COMMON::REQUESTS::parseFilter", "", "filter '%s', contains operations can only be used with data type string", key)
+				err := fmt.Errorf("filter '%s', contains operations can only be used with data type string", key)
+				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
 			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: values[0], Options: "i"}}}}}
 		default:

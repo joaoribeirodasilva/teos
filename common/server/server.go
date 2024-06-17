@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/database"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/service_log"
 )
 
@@ -29,18 +30,18 @@ func New(db *database.Db, conf *conf.Conf) *Server {
 	return s
 }
 
-func (s *Server) Listen() error {
+func (s *Server) Listen() *logger.HttpError {
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf("%s:%d", s.conf.Service.BindAddress, s.conf.Service.BindPort),
 		Handler: s.Service.Handler(),
 	}
+	logger.Info("starting server at %s", srv.Addr)
 
-	service_log.Info("COMMON::SERVER::Listen", "starting server at %s", srv.Addr)
 	go func() {
 		// service connections
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			service_log.Error(0, http.StatusBadRequest, "COMMON::SERVER::Listen", "", "listenning. ERR: %s", err.Error())
+			logger.Error(logger.LogStatusInternalServerError, nil, "listening", err, nil)
 		}
 	}()
 
@@ -57,14 +58,14 @@ func (s *Server) Listen() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
-		service_log.Error(0, http.StatusBadRequest, "COMMON::SERVER::Listen", "", "shutingdon server. ERR: %s", err.Error())
+		logger.Error(logger.LogStatusInternalServerError, nil, "shuting down server", err, nil)
 	}
 	// catching ctx.Done(). timeout of 5 seconds.
 	select {
 	case <-ctx.Done():
-		service_log.Info("COMMON::SERVER::Listen", "wait for 5 seconds...")
+		logger.Info("wait for 5 seconds...")
 	}
-	service_log.Info("COMMON::SERVER::Listen", "server terminated")
+	logger.Info("server terminated")
 
 	return nil
 }

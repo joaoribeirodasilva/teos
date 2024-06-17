@@ -1,15 +1,13 @@
 package server
 
 import (
-	"net/http"
-
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/database"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -59,21 +57,21 @@ func (r *Router) IsLogged(c *gin.Context) {
 
 	cookie, err := c.Cookie("teos_auth")
 	if err != nil {
-		appErr := service_log.Error(0, http.StatusForbidden, "COMMON::ROUTER::IsLogged", "", "ERR: %s", err.Error())
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		httpErr := logger.Error(logger.LogStatusForbidden, nil, "no credentials", err, nil)
+		c.AbortWithStatusJSON(httpErr.Status, httpErr.Error())
 		return
 	}
 
-	vars, appErr := controllers.MustGetAll(c)
-	if appErr != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
+	vars, httpErr := controllers.MustGetAll(c)
+	if httpErr != nil {
+		c.AbortWithStatusJSON(httpErr.Status, httpErr.Error())
 		return
 	}
 
 	token := token.New(vars.Configuration)
 	if !token.IsValid(cookie) {
-		appErr := service_log.Error(0, http.StatusForbidden, "COMMON::ROUTER::IsLogged", "", "invalid token")
-		c.AbortWithStatusJSON(appErr.HttpCode, appErr)
+		httpErr := logger.Error(logger.LogStatusForbidden, nil, "invalid token", err, nil)
+		c.AbortWithStatusJSON(httpErr.Status, httpErr.Error())
 		return
 	}
 

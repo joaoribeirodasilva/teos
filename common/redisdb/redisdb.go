@@ -10,44 +10,72 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type RedisDB struct {
-	Name     string
-	Client   *redis.Client
+type MemDBOptions struct {
 	Addr     string
 	Db       int
 	Username string
 	Password string
 }
 
-func New(name string, addr string, db int, username string, password string) *RedisDB {
-	r := new(RedisDB)
-	r.Name = name
-	r.Client = nil
-	r.Addr = addr
-	r.Db = db
-	r.Username = username
-	r.Password = password
+var (
+	defaultOptions = MemDBOptions{
+		Addr:     "localhost:6379",
+		Db:       0,
+		Username: "",
+		Password: "",
+	}
+	dbs map[string]*RedisDB
+)
+
+type RedisDB struct {
+	client   *redis.Client
+	addr     string
+	db       int
+	username string
+	password string
+}
+
+func New(options *MemDBOptions) *RedisDB {
+
+	if dbs == nil {
+		dbs = make(map[string]*RedisDB)
+	}
+	if options == nil {
+		options = &defaultOptions
+	}
+
+	r := &RedisDB{
+		addr:     options.Addr,
+		db:       options.Db,
+		username: options.Username,
+		password: options.Password,
+	}
+
 	return r
+
 }
 
 func (r *RedisDB) Connect() error {
 
 	opts := redis.Options{
-		Addr:     r.Addr,
-		DB:       r.Db,
-		Username: r.Username,
-		Password: r.Password,
+		Addr:     r.addr,
+		DB:       r.db,
+		Username: r.username,
+		Password: r.password,
 	}
 
-	slog.Info(fmt.Sprintf("[COMMON::REDISDB::Connect] connecting to redis '%s' database %d at %s...\n", r.Name, opts.DB, opts.Addr))
-	r.Client = redis.NewClient(&opts)
+	slog.Info(fmt.Sprintf("connecting to redis db on %s database %d", r.addr, r.db))
+	r.client = redis.NewClient(&opts)
 
-	_, err := r.Client.Ping(context.Background()).Result()
+	_, err := r.client.Ping(context.Background()).Result()
 	if err != nil {
-		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Connect] failed to connect to '%s' with Redis server(s). ERR: %s", r.Name, err.Error()))
+
+		slog.Error(fmt.Sprintf("failed to connect to redis server on '%s'. ERR: %s", r.addr, err.Error()))
 		return err
 	}
-	slog.Info(fmt.Sprintf("[COMMON::REDISDB::Connect] redis database %s connected", opts.Addr))
+
+	slog.Info(fmt.Sprintf("redis database %s connected", r.addr))
+
 	return nil
 }
 
@@ -55,13 +83,13 @@ func (r *RedisDB) Set(key string, val interface{}, ttl int) error {
 
 	json, err := json.Marshal(val)
 	if err != nil {
-		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Set] failed to marshal data to JSON. ERR: %s", err.Error()))
+		slog.Error(fmt.Sprintf("failed to marshal data to JSON. ERR: %s", err.Error()))
 		return err
 	}
 
 	duration := int64(time.Second) * int64(ttl)
-	if err := r.Client.Set(context.Background(), key, string(json), time.Duration(duration)); err.Err() != nil {
-		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Set] failed to set to '%s' Redis server. ERR: %s", r.Name, err.Err().Error()))
+	if err := r.client.Set(context.Background(), key, string(json), time.Duration(duration)); err.Err() != nil {
+		slog.Error(fmt.Sprintf("failed to set to  Redis server on '%s'. ERR: %s", r.addr, err.Err().Error()))
 		return err.Err()
 	}
 
@@ -70,9 +98,9 @@ func (r *RedisDB) Set(key string, val interface{}, ttl int) error {
 
 func (r *RedisDB) Get(key string, val interface{}, ttl int) (*string, error) {
 
-	result, err := r.Client.Get(context.Background(), "rec").Result()
+	result, err := r.client.Get(context.Background(), "rec").Result()
 	if err != nil {
-		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Get] failed to set to '%s' Redis server. ERR: %s", r.Name, err.Error()))
+		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Get] failed to set to redis server on '%s'. ERR: %s", r.addr, err.Error()))
 		return nil, err
 	}
 
@@ -81,10 +109,11 @@ func (r *RedisDB) Get(key string, val interface{}, ttl int) (*string, error) {
 
 func (r *RedisDB) Del(keys ...string) error {
 
-	_, err := r.Client.Del(context.Background(), keys...).Result()
+	_, err := r.client.Del(context.Background(), keys...).Result()
 	if err != nil {
-		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Get] failed to delete from '%s' Redis server. ERR: %s", r.Name, err.Error()))
+		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Get] failed to delete from redis server on '%s'. ERR: %s", r.addr, err.Error()))
 		return err
 	}
+
 	return nil
 }
