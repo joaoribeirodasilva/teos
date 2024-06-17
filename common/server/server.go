@@ -13,7 +13,6 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/logger"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
 )
 
 type Server struct {
@@ -53,7 +52,7 @@ func (s *Server) Listen() *logger.HttpError {
 	// kill -9 is syscall. SIGKILL but can"t be catch, so don't need add it
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-	service_log.Info("COMMON::SERVER::Listen", "shuting down server ...")
+	logger.Info("shuting down server ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

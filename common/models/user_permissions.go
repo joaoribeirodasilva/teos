@@ -74,5 +74,6 @@ func (m *UserPermissionModel) Validate() *logger.HttpError {
 		fields := []string{"active"}
 		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
+
 	return nil
 }

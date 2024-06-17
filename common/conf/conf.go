@@ -68,7 +68,7 @@ func (c *Conf) Read() bool {
 		slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "invalid service name"))
 		return false
 	} else if c.Service.Name != tempStr {
-		slog.Error(fmt.Sprintf("[%s] - %s", "COMMON::CONF::Read", "the configuration found is for service %s and this service is %s", tempStr, c.Service.Name))
+		slog.Error(fmt.Sprintf("the configuration found is for service %s and this service is %s", tempStr, c.Service.Name))
 		return false
 	}
 

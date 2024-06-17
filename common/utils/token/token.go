@@ -2,13 +2,11 @@ package token
 
 import (
 	"errors"
-	"net/http"
+	"fmt"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
-	"github.com/joaoribeirodasilva/teos/common/service_errors"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -41,19 +39,19 @@ func New(conf *configuration.Configuration) *Token {
 	return t
 }
 
-func (t *Token) Create(user *User, sessionId *primitive.ObjectID) *service_errors.Error {
+func (t *Token) Create(user *User, sessionId *primitive.ObjectID) error {
 
 	now := time.Now()
 
 	tempKey := t.conf.GetKey("COOKIE_EXPIRE")
 	if tempKey == nil || tempKey.Int == nil {
-		return service_log.Error(0, http.StatusInternalServerError, "COMMON::TOKEN::Create", "", "invalid token expiration")
+		return fmt.Errorf("invalid token expiration")
 	}
 	expires := now.Add(time.Duration(time.Second * time.Duration(*tempKey.Int)))
 
 	tempSecret := t.conf.GetKey("SECRET_KEY")
 	if tempSecret == nil || tempSecret.String == nil {
-		return service_log.Error(0, http.StatusInternalServerError, "COMMON::TOKEN::Create", "", "invalid secret")
+		return fmt.Errorf("invalid secret")
 	}
 
 	sub := make(map[string]interface{})
@@ -61,7 +59,7 @@ func (t *Token) Create(user *User, sessionId *primitive.ObjectID) *service_error
 	sub["sessionId"] = sessionId.Hex()
 	sub["email"] = user.Email
 	sub["name"] = user.Name
-	sub["surename"] = user.Surname
+	sub["surname"] = user.Surname
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"iss": iss,
@@ -73,7 +71,7 @@ func (t *Token) Create(user *User, sessionId *primitive.ObjectID) *service_error
 
 	tokenStr, err := token.SignedString([]byte(*tempSecret.String))
 	if err != nil {
-		return service_log.Error(0, http.StatusInternalServerError, "COMMON::TOKEN::Create", "", "failed to encrypt token")
+		return fmt.Errorf("failed to encrypt token")
 	}
 
 	t.TokenString = tokenStr
@@ -148,7 +146,7 @@ func (t *Token) IsValid(tokenString string) bool {
 	return true
 }
 
-func (t *Token) parseToken(jwtToken string) *service_errors.Error {
+func (t *Token) parseToken(jwtToken string) error {
 
 	token, err := jwt.Parse(jwtToken, func(token *jwt.Token) (interface{}, error) {
 		if _, OK := token.Method.(*jwt.SigningMethodHMAC); !OK {
@@ -158,7 +156,7 @@ func (t *Token) parseToken(jwtToken string) *service_errors.Error {
 	})
 
 	if err != nil {
-		return service_log.Error(0, http.StatusInternalServerError, "COMMON::TOKEN::parseToken", "", "invalid token")
+		return fmt.Errorf("invalid token")
 	}
 
 	t.token = token
