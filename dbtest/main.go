@@ -37,7 +37,7 @@ func main() {
 		Options:  env.Database.Options,
 	}
 
-	db := database.New("", dbOpts)
+	db := database.New(dbOpts)
 
 	if err := db.Connect(); err != nil {
 		os.Exit(1)
@@ -86,7 +86,7 @@ func main() {
 	   		os.Exit(1)
 	   	} */
 
-	logger.Info("service '%s' streminated", SERVICE_NAME)
+	logger.Info("service '%s' terminated", SERVICE_NAME)
 
 	os.Exit(0)
 }

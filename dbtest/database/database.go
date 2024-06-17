@@ -34,6 +34,38 @@ type Db struct {
 	ctx      context.Context
 }
 
+func New(options *DbOptions) *Db {
+
+	if options == nil {
+		slog.Error("failed to create database connection instance, no options specified")
+		return nil
+	}
+
+	db := &Db{}
+
+	db.ctx = context.TODO()
+	if options.Ctx != nil {
+		db.ctx = options.Ctx
+	}
+
+	db.dsn = options.Dsn
+	db.name = options.Name
+	if db.dsn == "" {
+		db.protocol = options.Protocol
+		db.hosts = options.Hosts
+		db.username = options.Username
+		db.password = options.Password
+		db.options = options.Options
+		if db.username != "" && db.password != "" {
+			db.dsn = fmt.Sprintf("%s://%s:%s@%s/?%s", db.protocol, db.username, db.password, db.hosts, db.options)
+		} else {
+			db.dsn = fmt.Sprintf("%s://%s/?%s", db.protocol, db.hosts, db.options)
+		}
+	}
+
+	return db
+}
+
 func (db *Db) Connect() error {
 
 	var err error

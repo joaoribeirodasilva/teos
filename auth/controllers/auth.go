@@ -101,7 +101,7 @@ func AuthLogin(c *gin.Context) {
 		SessionID: sessionRecord.ID,
 		Email:     record.Email,
 		Name:      record.FirstName,
-		Surename:  record.Surename,
+		Surname:   record.Surname,
 	}
 
 	if appErr := tokenObject.Create(&tokenUser, &sessionId); appErr != nil {

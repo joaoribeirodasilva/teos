@@ -12,8 +12,8 @@ import (
 )
 
 var (
-	ErrValueNotFound      = errors.New("confuration value not found")
-	ErrValueDifferentType = errors.New("confuration value exists with a different data type")
+	ErrValueNotFound      = errors.New("configuration value not found")
+	ErrValueDifferentType = errors.New("configuration value exists with a different data type")
 
 	defaultOptions = &ConfigurationOptions{
 		Application:                    "",
@@ -77,11 +77,11 @@ func (c *Configuration) GetConfiguration() error {
 		return err
 	}
 
-	if err := c.GetAppConfiguraton(); err != nil {
+	if err := c.GetAppConfiguration(); err != nil {
 		return err
 	}
 
-	logger.Info("confuguration readed from database successfully")
+	logger.Info("configuration reded from database successfully")
 
 	logger.Debug("configuration now is: ", c.values)
 
@@ -105,7 +105,7 @@ func (c *Configuration) GetApp() error {
 	return nil
 }
 
-func (c *Configuration) GetAppConfiguraton() error {
+func (c *Configuration) GetAppConfiguration() error {
 
 	coll := c.options.Db.GetDatabase().Collection(c.options.AppConfigurationCollectionName)
 

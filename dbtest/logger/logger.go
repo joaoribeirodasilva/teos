@@ -15,12 +15,13 @@ type LogTypes uint8
 type LogLevel uint8
 
 const (
-	LogStatusNotFound LogStatus = iota
+	LogStatusNone LogStatus = iota
+	LogStatusNotFound
 	LogStatusBadRequest
 	LogStatusConflict
 	LogStatusInternalServerError
 	LogStatusUnauthorized
-	LogStatusForbiden
+	LogStatusForbidden
 )
 
 const (
@@ -51,7 +52,7 @@ var (
 		LogStatusBadRequest:          400,
 		LogStatusConflict:            409,
 		LogStatusUnauthorized:        401,
-		LogStatusForbiden:            403,
+		LogStatusForbidden:           403,
 		LogStatusInternalServerError: 500,
 	}
 

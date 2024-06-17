@@ -10,12 +10,49 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+type MemDBOptions struct {
+	Addr     string
+	Db       int
+	Username string
+	Password string
+}
+
+var (
+	defaultOptions = MemDBOptions{
+		Addr:     "localhost:6379",
+		Db:       0,
+		Username: "",
+		Password: "",
+	}
+	dbs map[string]*RedisDB
+)
+
 type RedisDB struct {
 	client   *redis.Client
 	addr     string
 	db       int
 	username string
 	password string
+}
+
+func New(options *MemDBOptions) *RedisDB {
+
+	if dbs == nil {
+		dbs = make(map[string]*RedisDB)
+	}
+	if options == nil {
+		options = &defaultOptions
+	}
+
+	r := &RedisDB{
+		addr:     options.Addr,
+		db:       options.Db,
+		username: options.Username,
+		password: options.Password,
+	}
+
+	return r
+
 }
 
 func (r *RedisDB) Connect() error {
