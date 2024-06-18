@@ -65,11 +65,6 @@ func main() {
 
 	   	t_coll_options := &models.BaseCollectionOptions{
 	   		Ctx:        db.GetContext(),
-	   		UseMetas:   true,
-	   		UseUserID:  true,
-	   		UseDates:   true,
-	   		SoftDelete: true,
-	   		Debug:      true,
 	   	}
 
 	   	logger.Info("will insert test on the database")

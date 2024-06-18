@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -13,7 +13,6 @@ const (
 )
 
 type AppRoutesBlockModel struct {
-	BaseModel
 	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
 	AppAppID    primitive.ObjectID  `json:"appAppId" bson:"appAppId"`
 	AppApp      AppAppModel         `json:"appApp,omitempty" bson:"-"`
@@ -31,23 +30,6 @@ type AppRoutesBlockModel struct {
 
 func (m *AppRoutesBlockModel) GetCollectionName() string {
 	return collectionAppRoutesBlock
-}
-
-func (m *AppRoutesBlockModel) AssignValues(to interface{}) error {
-
-	dest, ok := to.(*AppRoutesBlockModel)
-	if !ok {
-		return ErrWrongModelType
-	}
-	dest.ID = m.ID
-	dest.AppAppID = m.AppAppID
-	dest.Name = m.Name
-	dest.Description = m.Description
-	dest.Route = m.Route
-	dest.Active = m.Active
-	to = dest
-
-	return nil
 }
 
 func (m *AppRoutesBlockModel) Validate() *logger.HttpError {

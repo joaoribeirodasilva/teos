@@ -1,24 +1,26 @@
 package structures
 
 import (
-	"github.com/joaoribeirodasilva/teos/common/conf"
+	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/database"
+	"github.com/joaoribeirodasilva/teos/common/environment"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
 	"github.com/joaoribeirodasilva/teos/common/requests"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
 )
 
-type Variables struct {
-	Conf          *conf.Conf
+type Services struct {
+	Gin           *gin.Engine
+	Env           *environment.Environment
 	Db            *database.Db
 	Configuration *configuration.Configuration
-	User          *token.User
 	SessionsDB    *redisdb.RedisDB
 	PermissionsDB *redisdb.RedisDB
 }
 
 type RequestValues struct {
-	Variables *Variables
-	Query     requests.QueryString
+	Services *Services
+	User     *token.User
+	Query    requests.QueryString
 }

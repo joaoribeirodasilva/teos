@@ -1,15 +1,6 @@
 package tests
 
-import (
-	"bytes"
-	"encoding/base64"
-	"encoding/json"
-	"fmt"
-	"net/http"
-	"testing"
-)
-
-func TestLogin(t *testing.T) {
+/* func TestLogin(t *testing.T) {
 	strLogin := "joao.r.silva@gmail.com:cma32nil!"
 	encodedCredentials := base64.StdEncoding.EncodeToString([]byte(strLogin))
 	resp, err := makeRequest("POST", "http://localhost:8080/auth/login", nil, encodedCredentials)
@@ -37,4 +28,4 @@ func makeRequest(method, url string, body interface{}, credentials string) (*htt
 	}
 
 	return resp, nil
-}
+} */

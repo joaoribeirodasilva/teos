@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -13,7 +13,6 @@ const (
 )
 
 type AppAppModel struct {
-	BaseModel   `json:"-" bson:"-"`
 	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
 	Name        string              `json:"name" bson:"name"`
 	Description *string             `json:"description" bson:"description"`
@@ -27,24 +26,12 @@ type AppAppModel struct {
 	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-func (m *AppAppModel) GetCollectionName() string {
-	return collectionAppAppsModel
+func (m *AppAppModel) GetID() primitive.ObjectID {
+	return m.ID
 }
 
-func (m *AppAppModel) AssignValues(to interface{}) error {
-
-	dest, ok := to.(*AppAppModel)
-	if !ok {
-		return ErrWrongModelType
-	}
-	dest.ID = m.ID
-	dest.Name = m.Name
-	dest.Description = m.Description
-	dest.AppKey = m.AppKey
-	dest.Active = m.Active
-	to = dest
-
-	return nil
+func (m *AppAppModel) GetCollectionName() string {
+	return collectionAppAppsModel
 }
 
 func (m *AppAppModel) Validate() *logger.HttpError {

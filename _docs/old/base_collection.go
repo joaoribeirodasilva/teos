@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/joaoribeirodasilva/teos/dbtest/database"
+	"github.com/joaoribeirodasilva/teos/common/database"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -89,9 +89,9 @@ func NewBaseCollection(name string, db *database.Db, opts *BaseCollectionOptions
 // The 'filter' parameter must be a valid mongo filter containing the query to perform.
 // The 'model' parameter must be a pointer to an array of 'iBaseModel' structures of and never be null.
 // The 'opts' parameter is optional and receives a pointer to a mongo 'options.FindOptions' type.
-func (bc *BaseCollection) FindAll(filter interface{}, model []iBaseModel, opts ...*options.FindOptions) (int64, error) {
+func (bc *BaseCollection) FindAll(filter interface{}, model interface{}, opts ...*options.FindOptions) (int64, error) {
 
-	count, err := bc.Find(filter, opts...)
+	count, err := bc.Find(filter, model, opts...)
 	if err != nil {
 		return 0, err
 	}
@@ -109,7 +109,7 @@ func (bc *BaseCollection) FindAll(filter interface{}, model []iBaseModel, opts .
 //
 // The 'filter' parameter must be a valid mongo filter containing the query to perform.
 // The 'opts' parameter is optional and receives a pointer to a mongo 'options.FindOptions' type.
-func (bc *BaseCollection) Find(filter interface{}, opts ...*options.FindOptions) (int64, error) {
+func (bc *BaseCollection) Find(filter interface{}, model interface{}, opts ...*options.FindOptions) (int64, error) {
 
 	bc.Cursor = nil
 

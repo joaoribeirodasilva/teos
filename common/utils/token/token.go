@@ -41,16 +41,20 @@ func New(conf *configuration.Configuration) *Token {
 
 func (t *Token) Create(user *User, sessionId *primitive.ObjectID) error {
 
+	var err error
+	var tempInt int64
+	var secret string
+
 	now := time.Now()
 
-	tempKey := t.conf.GetKey("COOKIE_EXPIRE")
-	if tempKey == nil || tempKey.Int == nil {
+	tempInt, err = t.conf.GetInt("COOKIE_EXPIRE")
+	if err != nil {
 		return fmt.Errorf("invalid token expiration")
 	}
-	expires := now.Add(time.Duration(time.Second * time.Duration(*tempKey.Int)))
+	expires := now.Add(time.Duration(time.Second * time.Duration(tempInt)))
 
-	tempSecret := t.conf.GetKey("SECRET_KEY")
-	if tempSecret == nil || tempSecret.String == nil {
+	secret, err = t.conf.GetString("SECRET_KEY")
+	if err != nil {
 		return fmt.Errorf("invalid secret")
 	}
 
@@ -69,7 +73,7 @@ func (t *Token) Create(user *User, sessionId *primitive.ObjectID) error {
 		"exp": expires.Unix(),
 	})
 
-	tokenStr, err := token.SignedString([]byte(*tempSecret.String))
+	tokenStr, err := token.SignedString([]byte(secret))
 	if err != nil {
 		return fmt.Errorf("failed to encrypt token")
 	}

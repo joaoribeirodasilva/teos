@@ -3,16 +3,10 @@ package models
 import (
 	"time"
 
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	collectionUserSession = "user_sessions"
-)
-
 type UserSessionModel struct {
-	BaseModel
 	ID         primitive.ObjectID  `json:"_id" bson:"_id"`
 	UserUserID primitive.ObjectID  `json:"userUserId" bson:"userUserId"`
 	UserUser   UserUserModel       `json:"userUser,omitempty" bson:"-"`
@@ -24,30 +18,11 @@ type UserSessionModel struct {
 	DeletedAt  *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-func (m *UserSessionModel) GetCollectionName() string {
-	return collectionUserSession
+type UserSessionsModel struct {
+	Count int64               `json:"count"`
+	Docs  *[]UserSessionModel `json:"docs"`
 }
 
-func (m *UserSessionModel) AssignValues(to interface{}) error {
-
-	dest, ok := to.(*UserSessionModel)
-	if !ok {
-		return ErrWrongModelType
-	}
-	dest.ID = m.ID
-	dest.UserUserID = m.UserUserID
-	to = dest
-
-	return nil
-}
-
-func (m *UserSessionModel) Validate() *logger.HttpError {
-
-	// TODO: Validate related
-	/* 	user := NewUserUserModel(m.ctx)
-	   	if appErr := m.FindByID(m.UserUserID, user); appErr != nil {
-	   		return appErr
-	   	} */
-
-	return nil
+func (m *UserSessionModel) GetID() primitive.ObjectID {
+	return m.ID
 }

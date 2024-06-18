@@ -5,48 +5,46 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
+	"github.com/joaoribeirodasilva/teos/common/models"
+	"github.com/joaoribeirodasilva/teos/users/services/sessions"
 )
 
 func UserSessionsList(c *gin.Context) {
 
-	_, err := controllers.MustGetAll(c)
+	services, err := controllers.GetValues(c)
 	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	c.Status(http.StatusOK)
+	svc := sessions.New(services)
+
+	docs, err := svc.List(nil)
+	if err != nil {
+
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
+
+	c.JSON(http.StatusOK, docs)
 }
 
 func UserSessionsGet(c *gin.Context) {
 
-	_, err := controllers.MustGetAll(c)
+	services, err := controllers.GetValues(c)
 	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	c.Status(http.StatusOK)
-}
+	svc := sessions.New(services)
+	doc := &models.UserSessionModel{}
 
-func UserSessionsUpdate(c *gin.Context) {
+	if err := svc.Get(nil, doc); err != nil {
 
-	_, err := controllers.MustGetAll(c)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
+		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	c.Status(http.StatusOK)
-}
-
-func UserSessionsDelete(c *gin.Context) {
-
-	_, err := controllers.MustGetAll(c)
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
-
-	c.Status(http.StatusOK)
+	c.JSON(http.StatusOK, &doc)
 }

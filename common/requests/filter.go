@@ -101,7 +101,7 @@ func (q *QueryString) Bind() *logger.HttpError {
 	//strFilter := q.c.Query("f")
 	fullQuery := q.c.Request.URL.Query()
 
-	fmt.Printf("Query: %+v\n", fullQuery)
+	//fmt.Printf("Query: %+v\n", fullQuery)
 
 	strId := q.c.Params.ByName("id")
 

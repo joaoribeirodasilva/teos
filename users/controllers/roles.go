@@ -7,6 +7,8 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 )
 
+type Ctrl struct{}
+
 func UserRolesList(c *gin.Context) {
 
 	_, err := controllers.MustGetAll(c)

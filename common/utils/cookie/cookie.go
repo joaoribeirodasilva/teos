@@ -1,8 +1,6 @@
 package cookie
 
 import (
-	"errors"
-
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 )
@@ -10,19 +8,19 @@ import (
 type Cookie struct {
 	Name     string
 	Value    string
-	MaxAge   int
+	MaxAge   int64
 	Path     string
 	Domain   string
 	Secure   bool
 	HttpOnly bool
-	server   *gin.Context
+	//server   *gin.Context
 }
 
 func New(
 	server *gin.Context,
 	Name string,
 	Value string,
-	MaxAge int,
+	MaxAge int64,
 	Domain string,
 	Secure int,
 	HttpOnly int) *Cookie {
@@ -54,51 +52,39 @@ func New(
 
 func NewFromConfiguration(value string, config *configuration.Configuration) (*Cookie, error) {
 
+	var err error
 	c := &Cookie{}
 
-	tempKey := config.GetKey("COOKIE_NAME")
-	if tempKey == nil || tempKey.String == nil || *tempKey.String == "" {
-		return nil, errors.New("invalid cookie name")
+	c.Name, err = config.GetString("COOKIE_NAME")
+	if err != nil {
+		return nil, err
 	}
-	c.Name = *tempKey.String
 
-	tempKey = config.GetKey("COOKIE_EXPIRE")
-	if tempKey == nil || tempKey.Int == nil {
-		return nil, errors.New("invalid cookie expire")
+	c.MaxAge, err = config.GetInt("COOKIE_EXPIRE")
+	if err != nil {
+		return nil, err
 	}
-	c.MaxAge = *tempKey.Int
 
-	tempKey = config.GetKey("COOKIE_DOMAIN")
-	if tempKey == nil || tempKey.String == nil || *tempKey.String == "" {
-		return nil, errors.New("invalid cookie name")
+	c.Domain, err = config.GetString("COOKIE_DOMAIN")
+	if err != nil {
+		return nil, err
 	}
-	c.Domain = *tempKey.String
 
-	tempKey = config.GetKey("COOKIE_SECURE")
-	if tempKey == nil || tempKey.Int == nil {
-		return nil, errors.New("invalid cookie secure")
+	c.Secure, err = config.GetBool("COOKIE_SECURE")
+	if err != nil {
+		return nil, err
 	}
-	tempSecure := false
-	if *tempKey.Int != 0 {
-		tempSecure = true
-	}
-	c.Secure = tempSecure
 
-	tempKey = config.GetKey("COOKIE_HTTP_ONLY")
-	if tempKey == nil || tempKey.Int == nil {
-		return nil, errors.New("invalid cookie http only")
+	c.HttpOnly, err = config.GetBool("COOKIE_SECURE")
+	if err != nil {
+		return nil, err
 	}
-	tempHttpOnly := false
-	if *tempKey.Int != 0 {
-		tempHttpOnly = true
-	}
-	c.HttpOnly = tempHttpOnly
 
 	return c, nil
 }
 
 func (c *Cookie) SetCookie(server *gin.Context) {
 
-	server.SetCookie(c.Name, c.Value, c.MaxAge, c.Path, c.Domain, c.Secure, c.HttpOnly)
+	server.SetCookie(c.Name, c.Value, int(c.MaxAge), c.Path, c.Domain, c.Secure, c.HttpOnly)
 
 }

@@ -1,16 +1,16 @@
 package main
 
 import (
-	"log/slog"
+	"context"
 	"os"
 
-	"github.com/joaoribeirodasilva/teos/common/conf"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/database"
-	"github.com/joaoribeirodasilva/teos/common/info"
+	"github.com/joaoribeirodasilva/teos/common/environment"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
 	"github.com/joaoribeirodasilva/teos/common/server"
-	"github.com/joaoribeirodasilva/teos/common/service_log"
+	"github.com/joaoribeirodasilva/teos/common/structures"
 	"github.com/joaoribeirodasilva/teos/hist/routes"
 )
 
@@ -21,57 +21,106 @@ const (
 
 func main() {
 
-	info.Print(SERVICE_NAME, VERSION)
+	logger.SetApplication(SERVICE_NAME)
+	logger.SetCollectionName("log_logs")
 
-	service_log.ApplicationName = SERVICE_NAME
-	service_log.LogDatabase = nil
-	service_log.IsDatabase = false
-	service_log.IsStdout = true
-
-	conf := conf.New(SERVICE_NAME)
-	if !conf.Read() {
+	env := environment.New()
+	if err := env.Read(); err != nil {
 		os.Exit(1)
 	}
 
-	db := database.New(conf)
+	logger.SetLogLevel(logger.LogLevel(env.Application.LogLevel))
+
+	dbOpts := &database.DbOptions{
+		Ctx:      context.TODO(),
+		Dsn:      env.Database.Dsn,
+		Protocol: env.Database.Protocol,
+		Hosts:    env.Database.Hosts,
+		Name:     env.Database.Name,
+		Username: env.Database.Username,
+		Password: env.Database.Password,
+		Options:  env.Database.Options,
+	}
+
+	db := database.New(dbOpts)
+
 	if err := db.Connect(); err != nil {
 		os.Exit(1)
 	}
 
-	serviceConfiguration := configuration.New(db, conf)
-	if err := serviceConfiguration.GetAppId(); err != nil {
-		os.Exit(1)
+	logger.SetDatabase(db)
+
+	confOpts := &configuration.ConfigurationOptions{
+		Application:                    SERVICE_NAME,
+		Db:                             db,
+		AppConfigurationCollectionName: "app_configurations",
+		AppCollectionName:              "app_apps",
 	}
-	if err := serviceConfiguration.Read(); err != nil {
+
+	configuration := configuration.New(confOpts)
+
+	if err := configuration.GetConfiguration(); err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "error reading configuration from database", err, nil)
 		os.Exit(1)
 	}
 
-	tempPort := serviceConfiguration.GetKey("NET_PORT")
-	if tempPort == nil || tempPort.Int == nil {
-		slog.Error("invalid network port to listen to")
+	redisAddress, err := configuration.GetString("REDIS_DB_SESSION_ADDRESS")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database address", err, nil)
 		os.Exit(1)
 	}
-	conf.Service.BindPort = *tempPort.Int
+	redisDatabase, err := configuration.GetInt("REDIS_DB_SESSION_DATABASE")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database number", err, nil)
+		os.Exit(1)
+	}
+	redisPassword, err := configuration.GetString("REDIS_DB_SESSION_PASSWORD")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database password", err, nil)
+		os.Exit(1)
+	}
+	redisUsername := ""
 
-	sessionsDB := redisdb.New("Sessions Database", serviceConfiguration.DbSessions.Addresses, serviceConfiguration.DbSessions.Db, serviceConfiguration.DbSessions.Username, serviceConfiguration.DbSessions.Password)
+	sessionsDB := redisdb.New(redisAddress, int(redisDatabase), redisUsername, redisPassword)
 	if appErr := sessionsDB.Connect(); appErr != nil {
 		os.Exit(1)
+
 	}
 
-	permissionsDB := redisdb.New("Permissions Database", serviceConfiguration.DbPermissions.Addresses, serviceConfiguration.DbPermissions.Db, serviceConfiguration.DbPermissions.Username, serviceConfiguration.DbPermissions.Password)
+	redisAddress, err = configuration.GetString("REDIS_DB_SESSION_ADDRESS")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database address", err, nil)
+		os.Exit(1)
+	}
+	redisDatabase, err = configuration.GetInt("REDIS_DB_SESSION_DATABASE")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database number", err, nil)
+		os.Exit(1)
+	}
+	redisPassword, err = configuration.GetString("REDIS_DB_SESSION_PASSWORD")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database password", err, nil)
+		os.Exit(1)
+	}
+	redisUsername = ""
+
+	permissionsDB := redisdb.New(redisAddress, int(redisDatabase), redisUsername, redisPassword)
 	if appErr := permissionsDB.Connect(); appErr != nil {
 		os.Exit(1)
 	}
 
-	if err := service_log.InitServiceLog(serviceConfiguration.DbPermissions.Addresses, serviceConfiguration.DbPermissions.Db, serviceConfiguration.DbPermissions.Username, serviceConfiguration.DbPermissions.Password); err != nil {
+	svc := server.New(db, &env.Application)
 
-		os.Exit(1)
+	services := &structures.Services{
+		Gin:           svc.Service,
+		SessionsDB:    sessionsDB,
+		PermissionsDB: permissionsDB,
+		Env:           env,
+		Db:            db,
+		Configuration: configuration,
 	}
-	service_log.IsDatabase = true
-	service_log.IsStdout = true
 
-	svc := server.New(db, conf)
-	router := server.NewRouter(svc.Service, conf, db, serviceConfiguration, sessionsDB, permissionsDB)
+	router := server.NewRouter(services)
 	routes.RegisterRoutes(router)
 	if err := svc.Listen(); err != nil {
 		os.Exit(1)

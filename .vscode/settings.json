@@ -2,6 +2,8 @@
     "cSpell.words": [
         "bson",
         "dbtest",
+        "godotenv",
+        "redisdb",
         "teos",
         "waitg"
     ]

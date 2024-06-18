@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/fatih/structs"
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )

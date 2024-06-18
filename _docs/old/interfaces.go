@@ -3,7 +3,7 @@ package models
 import (
 	"time"
 
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -20,8 +20,8 @@ type iBaseCollection interface {
 	SetUserID(user *primitive.ObjectID)
 	GetUserID() *primitive.ObjectID
 	AssignMeta(model iBaseModel, create bool, delete bool) error
-	FindAll(filter interface{}, model iBaseModel, opts ...*options.FindOptions) (int64, error)
-	Find(filter interface{}, model iBaseModel, opts ...*options.FindOptions) (int64, error)
+	FindAll(filter interface{}, model interface{}, opts ...*options.FindOptions) (int64, error)
+	Find(filter interface{}, model interface{}, opts ...*options.FindOptions) (int64, error)
 	First(filter interface{}, model iBaseModel, opts ...*options.FindOneOptions) error
 	FirstByID(id *primitive.ObjectID, model iBaseModel, opts ...*options.FindOneOptions) error
 	Create(uniqueFilter interface{}, model iBaseModel, opts ...*options.InsertOneOptions) error

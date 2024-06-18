@@ -5,8 +5,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/joaoribeirodasilva/teos/dbtest/database"
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
+	"github.com/joaoribeirodasilva/teos/common/database"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -48,6 +48,7 @@ type ConfigurationOptions struct {
 }
 
 type Configuration struct {
+	Secret        string
 	applicationID primitive.ObjectID
 	options       ConfigurationOptions
 	values        map[string]ConfigurationValue
@@ -137,13 +138,21 @@ func (c *Configuration) GetAppConfiguration() error {
 
 	c.waitgGroup.Add(1)
 	for _, conf := range configs {
-		key := strings.ToLower(conf.Key)
+		key := strings.ToUpper(conf.Key)
 		conf.Type = strings.ToLower(conf.Type)
 		c.values[key] = conf
+		if key == "SECRET_KEY" {
+			c.Secret = conf.String
+		}
 	}
 	c.waitgGroup.Done()
 
 	return nil
+}
+
+func (c *Configuration) GetAppID() primitive.ObjectID {
+
+	return c.applicationID
 }
 
 func (c *Configuration) GetValue(key string) (*ConfigurationValue, error) {

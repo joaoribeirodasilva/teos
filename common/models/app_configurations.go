@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -19,7 +19,6 @@ const (
 )
 
 type AppConfigurationModel struct {
-	BaseModel
 	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
 	AppAppID    *primitive.ObjectID `json:"appAppId" bson:"appAppId"`
 	AppApp      AppAppModel         `json:"appApp,omitempty" bson:"-"`
@@ -41,27 +40,6 @@ type AppConfigurationModel struct {
 
 func (m *AppConfigurationModel) GetCollectionName() string {
 	return collectionAppConfiguration
-}
-
-func (m *AppConfigurationModel) AssignValues(to interface{}) error {
-
-	dest, ok := to.(*AppConfigurationModel)
-	if !ok {
-		return ErrWrongModelType
-	}
-	dest.ID = m.ID
-	dest.AppAppID = m.AppAppID
-	dest.Name = m.Name
-	dest.Description = m.Description
-	dest.Key = m.Key
-	dest.Type = m.Type
-	dest.ValueInt = m.ValueInt
-	dest.ValueString = m.ValueString
-	dest.ValueFloat = m.ValueFloat
-	dest.ValueBool = m.ValueBool
-	to = dest
-
-	return nil
 }
 
 func (m *AppConfigurationModel) Validate() *logger.HttpError {

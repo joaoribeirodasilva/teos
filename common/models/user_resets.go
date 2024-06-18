@@ -3,16 +3,10 @@ package models
 import (
 	"time"
 
-	"github.com/joaoribeirodasilva/teos/dbtest/logger"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-const (
-	collectionUserReset = "user_reset"
-)
-
 type UserResetModel struct {
-	BaseModel
 	ID              primitive.ObjectID  `json:"_id" bson:"_id"`
 	UserResetTypeID primitive.ObjectID  `json:"userResetTypeId" bson:"resetTypeId"`
 	UserResetType   UserResetTypeModel  `json:"userResetType,omitempty" bson:"-"`
@@ -29,42 +23,11 @@ type UserResetModel struct {
 	DeletedAt       *time.Time          `json:"deletedAt" bson:"deletedAt"`
 }
 
-func (m *UserResetModel) GetCollectionName() string {
-	return collectionUserReset
+type UserResetsModel struct {
+	Count int64             `json:"count"`
+	Docs  *[]UserResetModel `json:"docs"`
 }
 
-func (m *UserResetModel) AssignValues(to interface{}) error {
-
-	dest, ok := to.(*UserResetModel)
-	if !ok {
-		return ErrWrongModelType
-	}
-	dest.ID = m.ID
-	dest.UserResetTypeID = m.UserResetTypeID
-	dest.UserUserID = m.UserUserID
-	dest.UserUser = m.UserUser
-	dest.ResetKey = m.ResetKey
-	dest.Used = m.Used
-	dest.Expire = m.Expire
-	to = dest
-
-	return nil
-}
-
-func (m *UserResetModel) Validate() *logger.HttpError {
-
-	//validate := validator.New()
-	// TODO: Validate related
-	/* 	user := NewUserUserModel(m.ctx)
-	   	if appErr := m.FindByID(m.UserUserID, user); appErr != nil {
-	   		return appErr
-	   	}
-
-	   	userResetType := NewUserResetTypeModel(m.ctx)
-	   	if appErr := m.FindByID(m.UserResetTypeID, userResetType); appErr != nil {
-	   		return appErr
-	   	}
-	*/
-
-	return nil
+func (m *UserResetModel) GetID() primitive.ObjectID {
+	return m.ID
 }

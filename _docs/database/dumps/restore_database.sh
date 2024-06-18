@@ -1,6 +1,6 @@
 DB_HOST=localhost
 DB_PORT=27017
-DB_DATABASE=teos1
+DB_DATABASE=teos
 DB_USERNAME=
 DB_PASSWORD=
 DB_AUTH=
@@ -13,7 +13,7 @@ fi
 
 if [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ]
 then
-    cmd="mongorestore --host=$DB_HOST --port=$DB_PORT --db=$DB_DATABASE  -v $DUMP_FILE"
+    cmd="mongorestore --host=$DB_HOST --port=$DB_PORT --db=$DB_DATABASE -v $DUMP_FILE"
 else
     cmd="mongorestore --host=$DB_HOST --port=$DB_PORT --db=$DB_DATABASE --username=$DB_USERNAME --password=$DB_PASSWORD --authenticationDatabase=$DB_AUTH -v $DUMP_FILE"
 fi

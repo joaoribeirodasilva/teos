@@ -5,8 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/joaoribeirodasilva/teos/dbtest/database"
-	"github.com/joaoribeirodasilva/teos/dbtest/utils/dump"
+	"github.com/joaoribeirodasilva/teos/common/database"
+	"github.com/joaoribeirodasilva/teos/common/utils/dump"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -81,7 +81,7 @@ type LogMessage struct {
 }
 
 type HttpError struct {
-	Status int        `json:"-"`
+	Status LogStatus  `json:"-"`
 	Err    LogMessage `json:"error"`
 }
 
@@ -119,7 +119,7 @@ func Warn(message string, args ...any) {
 func Error(status LogStatus, fields *[]string, message string, err error, data any) *HttpError {
 
 	httpErr := &HttpError{
-		Status: httpStatus[status],
+		Status: LogStatus(httpStatus[status]),
 		Err:    LogMessage{},
 	}
 
