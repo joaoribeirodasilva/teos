@@ -8,7 +8,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/responses"
-	users "github.com/joaoribeirodasilva/teos/users/services/users"
+	"github.com/joaoribeirodasilva/teos/users/services/users"
 )
 
 func UserUsersList(c *gin.Context) {
