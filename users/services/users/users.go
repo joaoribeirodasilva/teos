@@ -1,13 +1,11 @@
 package services
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
@@ -15,64 +13,38 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/services"
 	"github.com/joaoribeirodasilva/teos/common/structures"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
-	"github.com/joaoribeirodasilva/teos/hist/services/histories"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-)
-
-const (
-	collectionName = "user_users"
+	"gorm.io/gorm"
 )
 
 type UsersService struct {
 	services      *structures.RequestValues
-	database      *database.Db
-	db            *mongo.Database
-	coll          *mongo.Collection
+	db            *gorm.DB
 	user          *token.User
 	query         *requests.QueryString
 	sessionDb     *redisdb.RedisDB
 	permissionsDb *redisdb.RedisDB
-	context       context.Context
+	historyDb     *redisdb.RedisDB
 }
 
 func New(services *structures.RequestValues) *UsersService {
 	s := &UsersService{}
 	s.services = services
-	s.database = services.Services.Db
-	s.db = s.database.GetDatabase()
-	s.coll = s.db.Collection(collectionName)
+	s.db = services.Services.Db.GetDatabase()
 	s.user = services.User
 	s.query = &services.Query
 	s.sessionDb = services.Services.SessionsDB
 	s.permissionsDb = services.Services.PermissionsDB
-	s.context = s.database.GetContext()
+	s.historyDb = services.Services.HistoryDB
 	return s
 }
 
 // List returns a list of users from the collection
-func (s *UsersService) List(filter bson.D) (*models.UserUsersModel, *logger.HttpError) {
+func (s *UsersService) List(filter string, args ...any) (*models.Users, *logger.HttpError) {
 
-	opts := options.FindOptions{}
-	if filter == nil {
+	model := models.Users{}
+	models := models.Users{}
 
-		filter = *s.query.Filter
-		opts = *s.query.Options
-	} else {
-
-		opts.SetSkip(0)
-		opts.SetLimit(10)
-		opts.SetSort(
-			bson.D{
-				{Key: "created_at", Value: -1},
-			},
-		)
-	}
-
-	count, err := s.coll.CountDocuments(s.context, filter, nil)
-	if err != nil {
+	if err := s.db.Model(&model).Where(filter, args).Count(&models.Count).Error; err != nil {
 
 		return nil, logger.Error(
 			logger.LogStatusInternalServerError,
@@ -83,10 +55,9 @@ func (s *UsersService) List(filter bson.D) (*models.UserUsersModel, *logger.Http
 		)
 	}
 
-	cursor, err := s.coll.Find(s.context, filter, &opts)
-	if err != nil {
+	if err := s.db.Model(&model).Where(filter, args).Find(&models.Docs).Error; err != nil {
 
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 
 			return nil, logger.Error(
 				logger.LogStatusNotFound,
@@ -106,92 +77,94 @@ func (s *UsersService) List(filter bson.D) (*models.UserUsersModel, *logger.Http
 		)
 	}
 
-	docs := &models.UserSessionsModel{
-		Count: count,
+	for idx := range *models.Docs {
+		(*models.Docs)[idx].Password = ""
 	}
 
-	if err := cursor.All(s.context, docs.Docs); err != nil {
-
-		return nil, logger.Error(
-			logger.LogStatusInternalServerError,
-			nil,
-			"failed fetch results",
-			err,
-			nil,
-		)
-	}
-
-	return nil, nil
+	return &models, nil
 }
 
 // Get returns a single user from the collection
-func (s *UsersService) Get(filter bson.D, model *models.UserUserModel) *logger.HttpError {
+func (s *UsersService) Get(model *models.User, filter string, args ...any) *logger.HttpError {
 
-	if filter == nil {
-		filter = bson.D{{Key: "_id", Value: s.query.ID}}
+	query := s.db.Model(model)
+	if filter == "" {
+		query.Where("id = ?", s.query.ID)
+	} else {
+		query.Where(filter, args)
 	}
 
-	if err := s.coll.FindOne(
-		s.context,
-		filter,
-	).Decode(model); err != nil {
+	if err := query.First(model).Error; err != nil {
 
-		if err == mongo.ErrNoDocuments {
-			return logger.Error(logger.LogStatusNotFound, nil, "no documents found", nil, nil)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+
+			return logger.Error(
+				logger.LogStatusNotFound,
+				nil,
+				"no documents found",
+				nil,
+				nil,
+			)
 		}
-		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
+
+		return logger.Error(
+			logger.LogStatusInternalServerError,
+			nil,
+			"failed to query database",
+			err,
+			nil,
+		)
+
 	}
+
+	model.Password = ""
 
 	return nil
 }
 
 // Create creates a new user document or returns a logger.HttpError in case of error
-func (s *UsersService) Create(model *models.UserUserModel) *logger.HttpError {
+func (s *UsersService) Create(model *models.User) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
 	}
 
-	exists := &models.UserUserModel{}
-	if err := s.Get(
-		bson.D{
-			{Key: "email", Value: model.Email},
-		},
-		exists,
-	); err != nil {
-		if err.Status != logger.LogStatusNotFound {
-			return err
-		}
-		return nil
-	} else {
+	//TODO: organization config any can create user or only the organization
 
-		historySvc := histories.New(s.services)
-		history := &models.HistHistoryModel{
-			AppAppID:   s.services.Services.Configuration.GetAppID(),
-			Collection: collectionName,
-			OriginalID: exists.ID,
-			Data:       exists,
-		}
-		if err := historySvc.Create(history); err != nil {
-			return err
-		}
+	exists := models.User{}
 
-		exists.DeletedBy = nil
-		exists.DeletedAt = nil
+	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+
+			return logger.Error(
+				logger.LogStatusInternalServerError,
+				nil,
+				"failed to query database",
+				err,
+				nil,
+			)
+		}
 	}
 
-	s.assign(
-		exists,
-		model,
-		services.SVC_OPERATION_CREATE,
-	)
+	// Send exists to history
 
-	if _, err := s.coll.InsertOne(s.context, model); err != nil {
+	if exists.DeletedBy != nil || exists.DeletedAt != nil {
+
+		exists.DeletedAt = nil
+		exists.DeletedBy = nil
+
+		s.assign(&exists, model, services.SVC_OPERATION_CREATE)
+	} else {
+		s.assign(model, nil, services.SVC_OPERATION_CREATE)
+	}
+
+	if err := s.db.Create(model).Error; err != nil {
 
 		return logger.Error(
 			logger.LogStatusInternalServerError,
 			nil,
-			"failed to create document",
+			"failed to save document into database",
 			err,
 			nil,
 		)
@@ -201,100 +174,60 @@ func (s *UsersService) Create(model *models.UserUserModel) *logger.HttpError {
 }
 
 // Create updates a user document or returns a logger.HttpError in case of error
-func (s *UsersService) Update(model *models.UserUserModel) *logger.HttpError {
+func (s *UsersService) Update(model *models.User) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
 	}
 
-	exists := &models.UserUserModel{}
+	// Security
+	if s.user.ID != model.ID && s.user.OrganizationID != 1 {
 
-	if err := s.Get(
-		bson.D{
-			{Key: "email", Value: model.Email},
-		},
-		exists,
-	); err != nil {
-		if err != mongo.ErrNoDocuments {
-			return err
+		err := errors.New("user documents can only be changed by the owner")
+		return logger.Error(
+			logger.LogStatusUnauthorized,
+			nil,
+			"you don't have enough privileges to change an user document",
+			err,
+			nil,
+		)
+	}
+
+	exists := models.User{}
+	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+
+			return logger.Error(
+				logger.LogStatusNotFound,
+				nil,
+				"document not found",
+				err,
+				nil,
+			)
 		}
 	}
 
 	if exists.ID != model.ID {
-		err := errors.New("duplicate")
-		fields := []string{"email"}
-		return logger.Error(logger.LogStatusConflict, &fields, fmt.Sprintf("document already exists with id: %s", exists.ID.Hex()), err, nil)
+
+		err := errors.New("document exists")
+		return logger.Error(
+			logger.LogStatusConflict,
+			nil,
+			fmt.Sprintf("document already exists with the same uniqueness and id: %d", exists.ID),
+			err,
+			nil,
+		)
 	}
 
-	historySvc := histories.New(s.services)
-	history := &models.HistHistoryModel{
-		AppAppID:   s.services.Services.Configuration.GetAppID(),
-		Collection: collectionName,
-		OriginalID: exists.ID,
-		Data:       exists,
-	}
-	if err := historySvc.Create(history); err != nil {
-		return err
-	}
+	s.assign(&exists, model, services.SVC_OPERATION_UPDATE)
 
-	s.assign(
-		exists,
-		model,
-		services.SVC_OPERATION_UPDATE,
-	)
+	if err := s.db.Save(exists).Error; err != nil {
 
-	if _, err := s.coll.UpdateOne(
-		s.context,
-		bson.D{{Key: "_id", Value: s.query.ID}},
-		bson.D{{Key: "$set", Value: model}},
-	); err != nil {
-		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to update document", err, nil)
-	}
-
-	return nil
-}
-
-// Delete deletes a user document or returns a logger.HttpError in case of error
-func (s *UsersService) Delete(model *models.UserUserModel) *logger.HttpError {
-
-	exists := &models.UserUserModel{}
-
-	if err := s.Get(
-		bson.D{
-			{Key: "_id", Value: s.query.ID},
-		},
-		exists,
-	); err != nil {
-
-		return err
-	}
-
-	historySvc := histories.New(s.services)
-	history := &models.HistHistoryModel{
-		AppAppID:   s.services.Services.Configuration.GetAppID(),
-		Collection: collectionName,
-		OriginalID: exists.ID,
-		Data:       exists,
-	}
-	if err := historySvc.Create(history); err != nil {
-		return err
-	}
-
-	s.assign(
-		exists,
-		model,
-		services.SVC_OPERATION_DELETE,
-	)
-
-	if _, err := s.coll.UpdateOne(
-		s.context,
-		bson.D{{Key: "_id", Value: s.query.ID}},
-		bson.D{{Key: "$set", Value: model}},
-	); err != nil {
 		return logger.Error(
 			logger.LogStatusInternalServerError,
 			nil,
-			"failed to update document",
+			"failed to save document into database",
 			err,
 			nil,
 		)
@@ -303,7 +236,53 @@ func (s *UsersService) Delete(model *models.UserUserModel) *logger.HttpError {
 	return nil
 }
 
-func (m *UsersService) Validate(model *models.UserUserModel) *logger.HttpError {
+// Delete deletes a user document or returns a logger.HttpError in case of error
+func (s *UsersService) Delete(id uint) *logger.HttpError {
+
+	exists := &models.User{}
+
+	// Security
+	if s.user.ID != id && s.user.OrganizationID != 1 {
+
+		err := errors.New("user documents can only be deleted by the owner")
+		return logger.Error(
+			logger.LogStatusUnauthorized,
+			nil,
+			"you don't have enough privileges to delete an user document",
+			err,
+			nil,
+		)
+	}
+
+	if err := s.db.Where("id = ?", exists).First(&exists).Error; err != nil {
+
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+
+			return logger.Error(
+				logger.LogStatusNotFound,
+				nil,
+				"document not found",
+				err,
+				nil,
+			)
+		}
+	}
+
+	if err := s.db.Delete("id = ?", id).Error; err != nil {
+
+		return logger.Error(
+			logger.LogStatusInternalServerError,
+			nil,
+			"failed to save document into database",
+			err,
+			nil,
+		)
+	}
+
+	return nil
+}
+
+func (m *UsersService) Validate(model *models.User) *logger.HttpError {
 
 	validate := validator.New()
 	if err := validate.Var(model.FirstName, "required"); err != nil {
@@ -334,13 +313,12 @@ func (m *UsersService) Validate(model *models.UserUserModel) *logger.HttpError {
 	return nil
 }
 
-func (s *UsersService) assign(to *models.UserUserModel, from *models.UserUserModel, operation services.Operation) {
+func (s *UsersService) assign(to *models.User, from *models.User, operation services.Operation) {
 
 	now := time.Now().UTC()
 
 	if operation == services.SVC_OPERATION_CREATE {
 
-		to.ID = primitive.NewObjectID()
 		to.CreatedBy = s.user.ID
 		to.CreatedAt = now
 
