@@ -4,17 +4,12 @@ import (
 	"time"
 )
 
-type UserPermission struct {
+type AuthGroup struct {
 	ID             uint          `json:"id" gorm:"column:id;type:uint;primaryKey"`
 	OrganizationId uint          `json:"organizationId" gorm:"column:organization_id;type:uint;not null;"`
 	Organization   *Organization `json:"organization,omitempty"`
-	AuthRoleId     uint          `json:"authRoleId" gorm:"column:auth_role_id;type:uint;not null;"`
-	AuthRole       *AuthRole     `json:"authRole,omitempty"`
-	AppRouteId     uint          `json:"appRouteId" gorm:"column:app_route_id;type:uint;not null;"`
-	AppRoute       *AppRoute     `json:"appRoute,omitempty"`
-	UserID         uint          `json:"userId" gorm:"column:user_id;type:uint;not null;"`
-	User           *User         `json:"user,omitempty"`
-	Active         int           `json:"active" gorm:"column:active;type:int;size(1);"`
+	Name           string        `json:"name" gorm:"column:name;type:string;size:255;not null;"`
+	Description    *string       `json:"description" gorm:"column:description;type:string;size:65536;"`
 	CreatedBy      uint          `json:"createdBy" gorm:"column:created_by;type:uint;not null;"`
 	CreatedAt      time.Time     `json:"createdAt" gorm:"column:created_at;type:time;not null;"`
 	UpdatedBy      uint          `json:"updatedBy" gorm:"column:updated_by;type:uint;not null;"`
@@ -23,15 +18,15 @@ type UserPermission struct {
 	DeletedAt      *time.Time    `json:"deletedAt" gorm:"column:deleted_at;type:time"`
 }
 
-type UserPermissions struct {
-	Count int64             `json:"count"`
-	Docs  *[]UserPermission `json:"docs"`
+type AuthGroups struct {
+	Count int64        `json:"count"`
+	Docs  *[]AuthGroup `json:"docs"`
 }
 
-func (m *UserPermission) GetID() uint {
+func (m *AuthGroup) GetID() uint {
 	return m.ID
 }
 
-func (m *UserPermission) TableName() string {
-	return "user_permissions"
+func (m *AuthGroup) TableName() string {
+	return "auth_groups"
 }

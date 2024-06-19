@@ -7,15 +7,15 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type User struct {
-	ID        primitive.ObjectID
-	SessionID primitive.ObjectID
-	Email     string
-	Name      string
-	Surname   string
+	ID             uint
+	SessionID      uint
+	Email          string
+	Name           string
+	Surname        string
+	OrganizationID uint
 }
 
 type Token struct {
@@ -39,7 +39,7 @@ func New(conf *configuration.Configuration) *Token {
 	return t
 }
 
-func (t *Token) Create(user *User, sessionId *primitive.ObjectID) error {
+func (t *Token) Create(user *User, sessionId uint) error {
 
 	var err error
 	var tempInt int64
@@ -59,8 +59,9 @@ func (t *Token) Create(user *User, sessionId *primitive.ObjectID) error {
 	}
 
 	sub := make(map[string]interface{})
-	sub["id"] = user.ID.Hex()
-	sub["sessionId"] = sessionId.Hex()
+	sub["id"] = user.ID
+	sub["sessionId"] = sessionId
+	sub["organizationId"] = sessionId
 	sub["email"] = user.Email
 	sub["name"] = user.Name
 	sub["surname"] = user.Surname
@@ -104,9 +105,8 @@ func (t *Token) IsValid(tokenString string) bool {
 	if !ok {
 		return false
 	}
-	strId := iid.(string)
-	mid, err := primitive.ObjectIDFromHex(strId)
-	if err != nil {
+	mid := iid.(uint)
+	if !ok {
 		return false
 	}
 
@@ -115,9 +115,18 @@ func (t *Token) IsValid(tokenString string) bool {
 		return false
 	}
 
-	strSessionId := isessionid.(string)
-	sessionid, err := primitive.ObjectIDFromHex(strSessionId)
-	if err != nil {
+	sessionid, ok := isessionid.(uint)
+	if !ok {
+		return false
+	}
+
+	iorganizationid, ok := sub["organizationId"]
+	if !ok {
+		return false
+	}
+
+	organizationidid, ok := iorganizationid.(uint)
+	if !ok {
 		return false
 	}
 
@@ -133,18 +142,19 @@ func (t *Token) IsValid(tokenString string) bool {
 	}
 	nome := inome.(string)
 
-	isurename, ok := sub["surename"]
+	isurname, ok := sub["surname"]
 	if !ok {
 		return false
 	}
-	surename := isurename.(string)
+	surname := isurname.(string)
 
 	t.User = &User{
-		ID:        mid,
-		SessionID: sessionid,
-		Email:     email,
-		Name:      nome,
-		Surname:   surename,
+		ID:             mid,
+		SessionID:      sessionid,
+		OrganizationID: organizationidid,
+		Email:          email,
+		Name:           nome,
+		Surname:        surname,
 	}
 
 	return true

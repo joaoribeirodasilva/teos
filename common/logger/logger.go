@@ -213,25 +213,27 @@ func createMessage(typ LogTypes, mesg string, fields *[]string, data any) *LogMe
 
 func persist(msg LogMessage) {
 
-	if Logger.Db == nil {
-		return
-	}
+	/*
+		 	if Logger.Db == nil {
+				return
+			}
 
-	if Logger.CollectionName == "" {
-		slog.Warn("no collection name set for Logger, log persistance disabled")
-		return
-	}
+			if Logger.CollectionName == "" {
+				slog.Warn("no collection name set for Logger, log persistance disabled")
+				return
+			}
 
-	coll := Logger.Db.GetDatabase().Collection(Logger.CollectionName)
+			coll := Logger.Db.GetDatabase().Collection(Logger.CollectionName)
 
-	doc := &LogDocument{
-		ID:          primitive.NewObjectID(),
-		Application: Logger.Application,
-		Timestamp:   time.Now().UTC(),
-		Message:     &msg,
-	}
+			doc := &LogDocument{
+				ID:          primitive.NewObjectID(),
+				Application: Logger.Application,
+				Timestamp:   time.Now().UTC(),
+				Message:     &msg,
+			}
 
-	if _, err := coll.InsertOne(Logger.Db.GetContext(), doc); err != nil {
-		slog.Error(fmt.Sprintf("failed to persist log message, ERR: %s", err.Error()))
-	}
+			if _, err := coll.InsertOne(Logger.Db.GetContext(), doc); err != nil {
+				slog.Error(fmt.Sprintf("failed to persist log message, ERR: %s", err.Error()))
+			}
+	*/
 }

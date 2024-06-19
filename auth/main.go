@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	"github.com/joaoribeirodasilva/teos/auth/routes"
@@ -34,8 +35,7 @@ func main() {
 	dbOpts := &database.DbOptions{
 		Ctx:      context.TODO(),
 		Dsn:      env.Database.Dsn,
-		Protocol: env.Database.Protocol,
-		Hosts:    env.Database.Hosts,
+		Host:     env.Database.Host,
 		Name:     env.Database.Name,
 		Username: env.Database.Username,
 		Password: env.Database.Password,
@@ -51,10 +51,9 @@ func main() {
 	logger.SetDatabase(db)
 
 	confOpts := &configuration.ConfigurationOptions{
-		Application:                    SERVICE_NAME,
-		Db:                             db,
-		AppConfigurationCollectionName: "app_configurations",
-		AppCollectionName:              "app_apps",
+		Application: SERVICE_NAME,
+		Db:          db,
+		Environment: env.Application.EnvironmentName,
 	}
 
 	configuration := configuration.New(confOpts)
@@ -64,52 +63,65 @@ func main() {
 		os.Exit(1)
 	}
 
-	redisAddress, err := configuration.GetString("REDIS_DB_SESSION_ADDRESS")
+	// Redis databases
+	redisConf, err := configuration.GetRedisConf("DB_PERMISSIONS")
 	if err != nil {
-		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database address", err, nil)
+		logger.Error(logger.LogStatusInternalServerError, nil, "bad DB_PERMISSIONS configuration", err, nil)
 		os.Exit(1)
-	}
-	redisDatabase, err := configuration.GetInt("REDIS_DB_SESSION_DATABASE")
-	if err != nil {
-		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database number", err, nil)
-		os.Exit(1)
-	}
-	redisPassword, err := configuration.GetString("REDIS_DB_SESSION_PASSWORD")
-	if err != nil {
-		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database password", err, nil)
-		os.Exit(1)
-	}
-	redisUsername := ""
-
-	sessionsDB := redisdb.New(redisAddress, int(redisDatabase), redisUsername, redisPassword)
-	if appErr := sessionsDB.Connect(); appErr != nil {
-		os.Exit(1)
-
 	}
 
-	redisAddress, err = configuration.GetString("REDIS_DB_SESSION_ADDRESS")
-	if err != nil {
-		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database address", err, nil)
-		os.Exit(1)
-	}
-	redisDatabase, err = configuration.GetInt("REDIS_DB_SESSION_DATABASE")
-	if err != nil {
-		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database number", err, nil)
-		os.Exit(1)
-	}
-	redisPassword, err = configuration.GetString("REDIS_DB_SESSION_PASSWORD")
-	if err != nil {
-		logger.Error(logger.LogStatusInternalServerError, nil, "getting session database password", err, nil)
-		os.Exit(1)
-	}
-	redisUsername = ""
-
-	permissionsDB := redisdb.New(redisAddress, int(redisDatabase), redisUsername, redisPassword)
+	permissionsDB := redisdb.New("PERMISSIONS", fmt.Sprintf("%s:%d", redisConf.Addr, redisConf.Port), redisConf.Db, redisConf.Username, redisConf.Password)
 	if appErr := permissionsDB.Connect(); appErr != nil {
 		os.Exit(1)
 	}
 
-	svc := server.New(db, &env.Application)
+	redisConf, err = configuration.GetRedisConf("DB_SESSIONS")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "bad DB_SESSIONS configuration", err, nil)
+		os.Exit(1)
+	}
+
+	sessionsDB := redisdb.New("SESSIONS", fmt.Sprintf("%s:%d", redisConf.Addr, redisConf.Port), redisConf.Db, redisConf.Username, redisConf.Password)
+	if appErr := sessionsDB.Connect(); appErr != nil {
+		os.Exit(1)
+	}
+
+	redisConf, err = configuration.GetRedisConf("DB_HISTORY")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "bad DB_HISTORY configuration", err, nil)
+		os.Exit(1)
+	}
+
+	historyDB := redisdb.New("HISTORY", fmt.Sprintf("%s:%d", redisConf.Addr, redisConf.Port), redisConf.Db, redisConf.Username, redisConf.Password)
+	if appErr := historyDB.Connect(); appErr != nil {
+		os.Exit(1)
+	}
+
+	redisConf, err = configuration.GetRedisConf("DB_LOGS")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "bad DB_LOGS configuration", err, nil)
+		os.Exit(1)
+	}
+
+	logsDB := redisdb.New("LOGS", fmt.Sprintf("%s:%d", redisConf.Addr, redisConf.Port), redisConf.Db, redisConf.Username, redisConf.Password)
+	if appErr := logsDB.Connect(); appErr != nil {
+		os.Exit(1)
+	}
+
+	// Http server
+	httpAddr, err := configuration.GetString("HTTP_BIND_ADDR")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "invalid http listen address", err, nil)
+		os.Exit(1)
+	}
+
+	httpPort, err := configuration.GetInt("HTTP_BIND_PORT")
+	if err != nil {
+		logger.Error(logger.LogStatusInternalServerError, nil, "invalid http listen address", err, nil)
+		os.Exit(1)
+	}
+
+	svc := server.New(db, httpAddr, int(httpPort))
 
 	services := &structures.Services{
 		Gin:           svc.Service,

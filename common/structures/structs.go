@@ -17,6 +17,8 @@ type Services struct {
 	Configuration *configuration.Configuration
 	SessionsDB    *redisdb.RedisDB
 	PermissionsDB *redisdb.RedisDB
+	HistoryDB     *redisdb.RedisDB
+	LogsDB        *redisdb.RedisDB
 }
 
 type RequestValues struct {

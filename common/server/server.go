@@ -11,19 +11,20 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/database"
-	"github.com/joaoribeirodasilva/teos/common/environment"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 )
 
 type Server struct {
-	env     *environment.EnvApplication
+	addr    string
+	port    int
 	Service *gin.Engine
 }
 
-func New(db *database.Db, env *environment.EnvApplication) *Server {
+func New(db *database.Db, addr string, port int) *Server {
 
 	s := new(Server)
-	s.env = env
+	s.addr = addr
+	s.port = port
 	s.Service = gin.Default()
 
 	return s
@@ -32,7 +33,7 @@ func New(db *database.Db, env *environment.EnvApplication) *Server {
 func (s *Server) Listen() *logger.HttpError {
 
 	srv := &http.Server{
-		Addr:    fmt.Sprintf("%s:%d", s.env.ListenIp, s.env.ListenPort),
+		Addr:    fmt.Sprintf("%s:%d", s.addr, s.port),
 		Handler: s.Service.Handler(),
 	}
 	logger.Info("starting server at %s", srv.Addr)

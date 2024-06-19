@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"slices"
 	"strconv"
 
 	"github.com/joaoribeirodasilva/teos/common/utils/dump"
@@ -14,9 +13,9 @@ import (
 
 const (
 	defaultBindIp          = "127.0.0.1"
-	defaultBindPort        = 8080
-	defaultDatabaseOptions = "retryWrites=true&w=majority"
 	defaultLogLevel        = 3
+	defaultDatabaseOptions = ""
+	defaultEnvironmentName = "prod"
 )
 
 var (
@@ -24,8 +23,6 @@ var (
 	ErrNoDsnAndNoHosts        = errors.New("no DB_DSN and no DB_HOSTS defined")
 	ErrNoDsnAndNoDatabaseName = errors.New("no DB_DSN and no DB_DATABASE defined")
 	ErrJSONFailed             = errors.New("failed to generate JSON string for the configuration object")
-
-	validProtocols = []string{"mongodb+srv", "mongodb"}
 
 	LOG_LEVEL_NONE    = 0
 	LOG_LEVEL_ERROR   = 1
@@ -37,8 +34,7 @@ var (
 // EnvDatabase contains the values for database configuration
 type EnvDatabase struct {
 	Dsn      string `json:"dsn"`
-	Protocol string `json:"protocol"`
-	Hosts    string `json:"hosts"`
+	Host     string `json:"hosts"`
 	Name     string `json:"name"`
 	Username string `json:"username"`
 	Password string `json:"-"`
@@ -47,10 +43,10 @@ type EnvDatabase struct {
 
 // EnvApplication contains the application configuration
 type EnvApplication struct {
-	Name       string `json:"name"`
-	ListenIp   string `json:"bindIp"`
-	ListenPort int    `json:"bindPort"`
-	LogLevel   int    `json:"logLevel"`
+	Name            string `json:"name"`
+	EnvironmentName string `json:"envName"`
+	EnvironmentID   uint   `json:"envId"`
+	LogLevel        int    `json:"logLevel"`
 }
 
 // Environment contains all the configuration structures
@@ -116,41 +112,15 @@ func (e *Environment) Read() error {
 
 	}
 
-	e.Application.ListenIp = os.Getenv("SERVICE_BIND_IP")
-	if e.Application.ListenIp == "" {
-
-		e.Application.ListenIp = defaultBindIp
-		slog.Warn(fmt.Sprintf("no SERVICE_BIND_IP defined, defaulting to default bind ip: %s", defaultBindIp))
-
-	}
-
-	tempStr = os.Getenv("SERVICE_BIND_PORT")
-	e.Application.ListenPort, err = strconv.Atoi(tempStr)
-	if err != nil {
-
-		slog.Warn(fmt.Sprintf("no SERVICE_BIND_PORT defined, defaulting to default bind port: %d", defaultBindPort))
-
-	}
-	if e.Application.ListenPort < 8000 {
-
-		e.Application.ListenPort = defaultBindPort
-		slog.Warn(fmt.Sprintf("no SERVICE_BIND_PORT defined, defaulting to default bind port: %d", defaultBindPort))
-
+	e.Application.EnvironmentName = os.Getenv("ENVIRONMENT")
+	if e.Application.EnvironmentName == "" {
+		e.Application.EnvironmentName = defaultEnvironmentName
 	}
 
 	e.Database.Dsn = os.Getenv("DB_DSN")
 	if e.Database.Dsn == "" {
-
-		e.Database.Protocol = os.Getenv("DB_PROTOCOL")
-		if e.Database.Protocol == "" || !slices.Contains(validProtocols, e.Database.Protocol) {
-
-			slog.Error(ErrNoDsnAndNoProtocol.Error())
-			return ErrNoDsnAndNoProtocol
-
-		}
-
-		e.Database.Hosts = os.Getenv("DB_HOSTS")
-		if e.Database.Hosts == "" {
+		e.Database.Host = os.Getenv("DB_HOST")
+		if e.Database.Host == "" {
 
 			slog.Error(ErrNoDsnAndNoHosts.Error())
 			return ErrNoDsnAndNoHosts
@@ -166,7 +136,7 @@ func (e *Environment) Read() error {
 		}
 
 		e.Database.Username = os.Getenv("DB_USERNAME")
-		e.Database.Username = os.Getenv("DB_PASSWORD")
+		e.Database.Password = os.Getenv("DB_PASSWORD")
 		e.Database.Options = os.Getenv("DB_OPTIONS")
 		if e.Database.Options == "" {
 

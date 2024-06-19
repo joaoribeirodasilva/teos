@@ -1,76 +1,53 @@
 package models
 
 import (
-	"errors"
-	"slices"
 	"time"
-
-	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/logger"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-var (
-	validTypes = []string{"string", "int", "float", "bool"}
-)
+type ConfigurationType string
 
 const (
-	collectionAppConfiguration = "app_configurations"
+	TypeString   = "string"
+	TypeInt      = "int"
+	TypeDouble   = "double"
+	TypeBoolean  = "boolean"
+	TypeDate     = "date"
+	TypeTime     = "time"
+	TypeDateTime = "datetime"
 )
 
-type AppConfigurationModel struct {
-	ID          primitive.ObjectID  `json:"_id" bson:"_id"`
-	AppAppID    *primitive.ObjectID `json:"appAppId" bson:"appAppId"`
-	AppApp      AppAppModel         `json:"appApp,omitempty" bson:"-"`
-	Name        string              `json:"name" bson:"name"`
-	Description *string             `json:"description" bson:"description"`
-	Key         string              `json:"key" bson:"key"`
-	Type        string              `json:"type" bson:"type"`
-	ValueInt    *int                `json:"valueInt" bson:"valueInt"`
-	ValueString *string             `json:"valueString" bson:"valueString"`
-	ValueFloat  *float64            `json:"valueFloat" bson:"valueFloat"`
-	ValueBool   *bool               `json:"valueBool" bson:"valueBool"`
-	CreatedBy   primitive.ObjectID  `json:"createdBy" bson:"createdBy"`
-	CreatedAt   time.Time           `json:"createdAt" bson:"createdAt"`
-	UpdatedBy   primitive.ObjectID  `json:"updatedBy" bson:"updatedBy"`
-	UpdatedAt   time.Time           `json:"updatedAt" bson:"updatedAt"`
-	DeletedBy   *primitive.ObjectID `json:"deletedBy" bson:"deletedBy"`
-	DeletedAt   *time.Time          `json:"deletedAt" bson:"deletedAt"`
+type AppConfiguration struct {
+	ID               uint              `json:"id" gorm:"column:id;type:uint;primaryKey"`
+	AppEnvironmentID uint              `json:"appEnvironmentId" gorm:"column:app_environment_id;type:uint;not null;"`
+	AppEnvironment   *AppEnvironment   `json:"appEnvironment,omitempty"`
+	ApplicationID    uint              `json:"applicationId" gorm:"column:application_ịId;type:uint;not null;"`
+	Application      *Application      `json:"application,omitempty"`
+	ConfigurationKey string            `json:"configurationKey" gorm:"column:configuration_key;type:string;size:255;not null;"`
+	ValString        *string           `json:"valString" gorm:"column:val_string;type:string;size:65536;"`
+	ValInt           *int64            `json:"valInt" gorm:"column:val_int;type:int64;"`
+	ValDouble        *float64          `json:"valDouble" gorm:"column:val_double;type:float64;"`
+	ValBool          *int              `json:"valBoolean" gorm:"column:val_boolean;type:int;size(1);"`
+	ValDate          *time.Time        `json:"valDate" gorm:"column:val_date;type:DATE;"`
+	ValTime          *time.Time        `json:"valTime" gorm:"column:val_time;type:TIME;"`
+	ValDateTime      *time.Time        `json:"valDateTime" gorm:"column:val_datetime;type:TIMESTAMP;"`
+	Type             ConfigurationType `json:"type" gorm:"column:type;type:string;"`
+	CreatedBy        uint              `json:"createdBy" gorm:"column:created_by;type:uint;not null;"`
+	CreatedAt        time.Time         `json:"createdAt" gorm:"column:created_at;type:time;not null;"`
+	UpdatedBy        uint              `json:"updatedBy" gorm:"column:updated_by;type:uint;not null;"`
+	UpdatedAt        time.Time         `json:"updatedAt" gorm:"column:updated_at;type:time;not null;"`
+	DeletedBy        *uint             `json:"deletedBy" gorm:"column:deleted_by;type:uint"`
+	DeletedAt        *time.Time        `json:"deletedAt" gorm:"column:deleted_at;type:time"`
 }
 
-func (m *AppConfigurationModel) GetCollectionName() string {
-	return collectionAppConfiguration
+type AppConfigurations struct {
+	Count int64               `json:"count"`
+	Docs  *[]AppConfiguration `json:"docs"`
 }
 
-func (m *AppConfigurationModel) Validate() *logger.HttpError {
+func (m *AppConfiguration) GetID() uint {
+	return m.ID
+}
 
-	validate := validator.New()
-
-	// TODO: Validate related
-	/* 	if m.AppAppID != nil {
-		appApp := NewAppAppModel(m.ctx)
-		if appErr := m.FindByID(*m.AppAppID, appApp); appErr != nil {
-			return appErr
-		}
-	} */
-
-	if err := validate.Var(m.Name, "required,gte=1"); err != nil {
-		fields := []string{"name"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
-	}
-	if err := validate.Var(m.Key, "required,gte=1"); err != nil {
-		fields := []string{"key"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid key ", err, nil)
-	}
-	if err := validate.Var(m.Type, "required,gte=1"); err != nil {
-		fields := []string{"type"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid type ", err, nil)
-	}
-	if !slices.Contains(validTypes, m.Type) {
-		fields := []string{"type"}
-		err := errors.New("invalid field type")
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid type ", err, nil)
-	}
-
-	return nil
+func (m *AppConfiguration) TableName() string {
+	return "app_configurations"
 }

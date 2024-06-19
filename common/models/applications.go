@@ -4,11 +4,12 @@ import (
 	"time"
 )
 
-type AppRoute struct {
+type Application struct {
 	ID          uint       `json:"id" gorm:"column:id;type:uint;primaryKey"`
 	Name        string     `json:"name" gorm:"column:name;type:string;size:255;not null;"`
 	Description *string    `json:"description" gorm:"column:description;type:string;size:65536;"`
-	Key         string     `json:"key" gorm:"column:key;type:string;size:50;"`
+	Code        string     `json:"code" gorm:"column:code;type:string;size:255;"`
+	Internal    int        `json:"internal" gorm:"column:internal;type:int;size:1;"`
 	CreatedBy   uint       `json:"createdBy" gorm:"column:created_by;type:uint;not null;"`
 	CreatedAt   time.Time  `json:"createdAt" gorm:"column:created_at;type:time;not null;"`
 	UpdatedBy   uint       `json:"updatedBy" gorm:"column:updated_by;type:uint;not null;"`
@@ -17,15 +18,15 @@ type AppRoute struct {
 	DeletedAt   *time.Time `json:"deletedAt" gorm:"column:deleted_at;type:time"`
 }
 
-type AppRoutes struct {
-	Count int64       `json:"count"`
-	Docs  *[]AppRoute `json:"docs"`
+type Applications struct {
+	Count int64          `json:"count"`
+	Docs  *[]Application `json:"docs"`
 }
 
-func (m *AppRoute) GetID() uint {
+func (m *Application) GetID() uint {
 	return m.ID
 }
 
-func (m *AppRoute) TableName() string {
-	return "app_routes"
+func (m *Application) TableName() string {
+	return "applications"
 }

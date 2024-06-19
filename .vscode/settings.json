@@ -1,9 +1,18 @@
 {
     "cSpell.words": [
         "bson",
+        "datetime",
         "dbtest",
         "godotenv",
+        "iemail",
+        "inome",
+        "iorganizationid",
+        "isessionid",
+        "isurname",
+        "organizationidid",
         "redisdb",
+        "sessionid",
+        "Tablename",
         "teos",
         "waitg"
     ]

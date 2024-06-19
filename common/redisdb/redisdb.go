@@ -11,6 +11,7 @@ import (
 )
 
 type RedisDB struct {
+	name     string
 	client   *redis.Client
 	addr     string
 	db       int
@@ -18,9 +19,10 @@ type RedisDB struct {
 	password string
 }
 
-func New(addr string, database int, username string, password string) *RedisDB {
+func New(name string, addr string, database int, username string, password string) *RedisDB {
 
 	r := &RedisDB{
+		name:     name,
 		addr:     addr,
 		db:       database,
 		username: username,
@@ -28,7 +30,6 @@ func New(addr string, database int, username string, password string) *RedisDB {
 	}
 
 	return r
-
 }
 
 func (r *RedisDB) Connect() error {
@@ -40,17 +41,17 @@ func (r *RedisDB) Connect() error {
 		Password: r.password,
 	}
 
-	slog.Info(fmt.Sprintf("connecting to redis db on %s database %d", r.addr, r.db))
+	slog.Info(fmt.Sprintf("service %s connecting to redis db on %s database %d", r.name, r.addr, r.db))
 	r.client = redis.NewClient(&opts)
 
 	_, err := r.client.Ping(context.Background()).Result()
 	if err != nil {
 
-		slog.Error(fmt.Sprintf("failed to connect to redis server on '%s'. ERR: %s", r.addr, err.Error()))
+		slog.Error(fmt.Sprintf("service %s failed to connect to redis server on '%s'. ERR: %s", r.name, r.addr, err.Error()))
 		return err
 	}
 
-	slog.Info(fmt.Sprintf("redis database %s connected", r.addr))
+	slog.Info(fmt.Sprintf("redis service %s database %s connected", r.name, r.addr))
 
 	return nil
 }
