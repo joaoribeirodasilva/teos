@@ -4,14 +4,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	app_routes "github.com/joaoribeirodasilva/teos/apps/services/app_routes"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/responses"
-	users "github.com/joaoribeirodasilva/teos/users/services/users"
 )
 
-func UsersList(c *gin.Context) {
+func AppRoutesList(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -19,7 +19,7 @@ func UsersList(c *gin.Context) {
 		return
 	}
 
-	svc := users.New(services)
+	svc := app_routes.New(services)
 
 	docs, err := svc.List("")
 	if err != nil {
@@ -31,7 +31,7 @@ func UsersList(c *gin.Context) {
 	c.JSON(http.StatusOK, docs)
 }
 
-func UsersGet(c *gin.Context) {
+func AppRoutesGet(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -39,8 +39,8 @@ func UsersGet(c *gin.Context) {
 		return
 	}
 
-	svc := users.New(services)
-	doc := &models.User{}
+	svc := app_routes.New(services)
+	doc := &models.AppRoute{}
 
 	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
 
@@ -51,7 +51,7 @@ func UsersGet(c *gin.Context) {
 	c.JSON(http.StatusOK, &doc)
 }
 
-func UsersCreate(c *gin.Context) {
+func AppRoutesCreate(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -60,8 +60,8 @@ func UsersCreate(c *gin.Context) {
 		return
 	}
 
-	svc := users.New(services)
-	doc := &models.User{}
+	svc := app_routes.New(services)
+	doc := &models.AppRoute{}
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 
@@ -84,7 +84,7 @@ func UsersCreate(c *gin.Context) {
 
 }
 
-func UsersUpdate(c *gin.Context) {
+func AppRoutesUpdate(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -93,8 +93,8 @@ func UsersUpdate(c *gin.Context) {
 		return
 	}
 
-	svc := users.New(services)
-	doc := &models.User{}
+	svc := app_routes.New(services)
+	doc := &models.AppRoute{}
 	doc.ID = *services.Query.ID
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
@@ -113,7 +113,7 @@ func UsersUpdate(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func UsersDelete(c *gin.Context) {
+func AppRoutesDelete(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -122,8 +122,8 @@ func UsersDelete(c *gin.Context) {
 		return
 	}
 
-	svc := users.New(services)
-	doc := &models.User{}
+	svc := app_routes.New(services)
+	doc := &models.AppRoute{}
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 

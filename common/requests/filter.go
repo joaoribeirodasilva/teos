@@ -12,7 +12,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -21,21 +20,21 @@ type QueryString struct {
 	pageSize int64                `query:"ps"`
 	all      bool                 `query:"a"`
 	sort     string               `query:"s"`
-	dir      int                  `query:"d"`
+	dir      string               `query:"d"`
 	filter   string               `query:"f"`
 	c        *gin.Context         `query:"-"`
-	ID       *primitive.ObjectID  `query:"-"`
+	ID       *uint                `query:"-"`
 	Options  *options.FindOptions `query:"-"`
 	Related  bool                 `query:"r"`
-	Filter   *primitive.D         `query:"-"`
+	Filter   *string              `query:"-"`
 }
 
 const (
 	defaultPage     = 0
 	defaultPageSize = 10
 	maxPageSize     = 100
-	defaultDir      = -1
-	defaultSort     = "_id"
+	defaultDir      = "DESC"
+	defaultSort     = "id"
 	defaultAll      = false
 
 	TYPE_NULL    = 0
@@ -58,16 +57,16 @@ const (
 
 var (
 	operations = map[string]string{
-		OPERATION_EQUAL:              "$eq",
-		OPERATION_NOTEQUAL:           "$ne",
-		OPERATION_LESSTHAN:           "$lt",
-		OPERATION_GREATERTHAN:        "$gt",
-		OPERATION_LESSTHANOREQUAL:    "$lte",
-		OPERATION_GREATERTHANOREQUAL: "$gte",
-		OPERATION_BETWEEN:            "",
-		OPERATION_STARTSWITH:         "",
-		OPERATION_ENDSWITH:           "",
-		OPERATION_CONTAINS:           "",
+		OPERATION_EQUAL:              "=",
+		OPERATION_NOTEQUAL:           "!=",
+		OPERATION_LESSTHAN:           "<",
+		OPERATION_GREATERTHAN:        ">",
+		OPERATION_LESSTHANOREQUAL:    "<=",
+		OPERATION_GREATERTHANOREQUAL: ">=",
+		OPERATION_BETWEEN:            "`%s` BETWEEN%s",
+		OPERATION_STARTSWITH:         "LIKE('%%%s')",
+		OPERATION_ENDSWITH:           "LIKE('%s%%')",
+		OPERATION_CONTAINS:           "LIKE('%%%s%%')",
 	}
 	nonFilterKeys = []string{"p", "ps", "a", "s", "d", "r"}
 )
@@ -81,7 +80,7 @@ func NewQueryString(c *gin.Context) *QueryString {
 	q.dir = defaultDir
 	q.filter = ""
 	q.ID = nil
-	q.Filter = &primitive.D{{}}
+	q.Filter = nil
 	q.Options = &options.FindOptions{}
 	q.Related = false
 	q.c = c
@@ -152,16 +151,11 @@ func (q *QueryString) Bind() *logger.HttpError {
 		q.sort = strSort
 	}
 
-	q.dir = 1
-	if q.sort == "_id" {
-		q.dir = -1
-	}
-
-	strDir = strings.ToUpper(strDir)
-	if strDir == "DESC" {
-		q.dir = -1
-	} else if strDir == "ASC" {
-		q.dir = 1
+	q.dir = strings.ToUpper(strDir)
+	if q.dir != "ASC" && q.dir != "DESC" {
+		err := errors.New("invalid sort direction, it can be only ASC or DESC")
+		fields := []string{"d"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "", err, nil)
 	}
 
 	if err := q.getID(strId); err != nil {
@@ -183,7 +177,7 @@ func (q *QueryString) Bind() *logger.HttpError {
 
 func (q *QueryString) parseFilter(filters url.Values) *logger.HttpError {
 
-	filterArray := []primitive.D{}
+	finalFilter := ""
 
 	if len(filters) == 0 {
 		return nil
@@ -193,10 +187,7 @@ func (q *QueryString) parseFilter(filters url.Values) *logger.HttpError {
 	hasDeletedBy := url.Values.Get(filters, "deletedBy")
 	hasDeletedAt := url.Values.Get(filters, "deletedAt")
 	if hasDeletedBy == "" && hasDeletedAt == "" {
-		f := primitive.D{{Key: "deletedBy", Value: nil}}
-		filterArray = append(filterArray, f)
-		f = primitive.D{{Key: "deletedAt", Value: nil}}
-		filterArray = append(filterArray, f)
+		finalFilter = "deleted_by IS NULL AND deleted_at IS NULL"
 	}
 
 	for key, filter := range filters {
@@ -301,49 +292,59 @@ func (q *QueryString) parseFilter(filters url.Values) *logger.HttpError {
 			}
 		}
 
-		var filt primitive.D
+		var filt string
 		switch params[1] {
 		case OPERATION_BETWEEN:
 			if dataType != TYPE_DATE && dataType != TYPE_NUMERIC {
 				err := fmt.Errorf("filter '%s', between operations can only be used with data types numeric and date", key)
 				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
-			filt = primitive.D{
-				{Key: "$and", Value: primitive.A{
-					primitive.D{{Key: field, Value: primitive.D{{Key: "$gte", Value: valStart}}}},
-					primitive.D{{Key: field, Value: primitive.D{{Key: "$lte", Value: valEnd}}}},
-				}},
+			if dataType != TYPE_DATE {
+				startDate := valStart.(time.Time)
+				endDate := valEnd.(time.Time)
+				filt = fmt.Sprintf("('%s','%s') ", startDate.Format("2006-01-02 15:04:05"), endDate.Format("2006-01-02 15:04:05"))
+			} else {
+				filt = fmt.Sprintf("('%d','%d') ", valStart, valEnd)
 			}
+			filt = fmt.Sprintf(operation, field, filt)
+
 		case OPERATION_STARTSWITH:
 			if dataType != TYPE_STRING {
 				err := fmt.Errorf("filter '%s', start with operations can only be used with data type string", key)
 				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
-			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: "^" + values[0], Options: "i"}}}}}
+			filt = fmt.Sprintf(operation, valStart)
 		case OPERATION_ENDSWITH:
 			if dataType != TYPE_STRING {
 				err := fmt.Errorf("filter '%s', end with operations can only be used with data type string", key)
 				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
-			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: values[0] + "$", Options: "i"}}}}}
+			filt = fmt.Sprintf(operation, valStart)
 		case OPERATION_CONTAINS:
 			if dataType != TYPE_STRING {
 				err := fmt.Errorf("filter '%s', contains operations can only be used with data type string", key)
 				return logger.Error(logger.LogStatusBadRequest, nil, "", err, nil)
 			}
-			filt = primitive.D{{Key: field, Value: primitive.D{{Key: "$regex", Value: primitive.Regex{Pattern: values[0], Options: "i"}}}}}
+			filt = fmt.Sprintf(operation, valStart)
 		default:
-			filt = primitive.D{{Key: field, Value: primitive.D{{Key: operation, Value: valStart}}}}
+			if dataType == TYPE_STRING {
+				filt = fmt.Sprintf(" `%s`%s'%s' ", field, operation, valStart)
+			} else if dataType == TYPE_NUMERIC {
+				filt = fmt.Sprintf(" `%s`%s%d ", field, operation, valStart)
+			} else if dataType == TYPE_BOOL {
+				filt = fmt.Sprintf(" `%s`%s%t ", field, operation, valStart)
+			} else if dataType == TYPE_DATE {
+				startDate := valStart.(time.Time)
+				filt = fmt.Sprintf(" `%s`%s%s ", field, operation, startDate.Format("2006-01-02 15:04:05"))
+			} else {
+				filt = fmt.Sprintf(" `%s`%s%s ", field, " IS ", valStart)
+			}
 		}
 
-		filterArray = append(filterArray, filt)
+		finalFilter = fmt.Sprintf(finalFilter, filt)
 	}
 
-	if len(filterArray) > 1 {
-		q.Filter = &primitive.D{{Key: "$and", Value: filterArray}}
-	} else if len(filterArray) == 1 {
-		q.Filter = &filterArray[0]
-	}
+	q.Filter = &finalFilter
 
 	fmt.Printf("Filter: %+v\n", q.Filter)
 
@@ -382,11 +383,12 @@ func (q *QueryString) isISODate(value string) *time.Time {
 
 func (q *QueryString) getID(strId string) error {
 
-	id, err := primitive.ObjectIDFromHex(strId)
+	id, err := strconv.Atoi(strId)
 	if err != nil {
 		return err
 	}
-	q.ID = &id
+	final := uint(id)
+	q.ID = &final
 	return nil
 }
 

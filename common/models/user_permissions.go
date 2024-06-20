@@ -6,11 +6,11 @@ import (
 
 type UserPermission struct {
 	ID             uint          `json:"id" gorm:"column:id;type:uint;primaryKey"`
-	OrganizationId uint          `json:"organizationId" gorm:"column:organization_id;type:uint;not null;"`
+	OrganizationID uint          `json:"organizationId" gorm:"column:organization_id;type:uint;not null;"`
 	Organization   *Organization `json:"organization,omitempty"`
-	AuthRoleId     uint          `json:"authRoleId" gorm:"column:auth_role_id;type:uint;not null;"`
+	AuthRoleID     uint          `json:"authRoleId" gorm:"column:auth_role_id;type:uint;not null;"`
 	AuthRole       *AuthRole     `json:"authRole,omitempty"`
-	AppRouteId     uint          `json:"appRouteId" gorm:"column:app_route_id;type:uint;not null;"`
+	AppRouteID     uint          `json:"appRouteId" gorm:"column:app_route_id;type:uint;not null;"`
 	AppRoute       *AppRoute     `json:"appRoute,omitempty"`
 	UserID         uint          `json:"userId" gorm:"column:user_id;type:uint;not null;"`
 	User           *User         `json:"user,omitempty"`

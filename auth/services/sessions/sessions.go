@@ -1,11 +1,10 @@
-package history
+package sessions
 
 import (
-	"context"
+	"errors"
 	"time"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
@@ -13,63 +12,45 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/services"
 	"github.com/joaoribeirodasilva/teos/common/structures"
 	"github.com/joaoribeirodasilva/teos/common/utils/token"
+	"github.com/joaoribeirodasilva/teos/hist/services/histories"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
+	"gorm.io/gorm"
 )
 
 const (
 	collectionName = "user_sessions"
 )
 
-type HistoriesService struct {
+type SessionsService struct {
 	services      *structures.RequestValues
-	database      *database.Db
-	db            *mongo.Database
-	coll          *mongo.Collection
+	db            *gorm.DB
 	user          *token.User
 	query         *requests.QueryString
 	sessionDb     *redisdb.RedisDB
 	permissionsDb *redisdb.RedisDB
-	context       context.Context
+	historyDb     *redisdb.RedisDB
 }
 
-func New(services *structures.RequestValues) *HistoriesService {
-	s := &HistoriesService{}
+func New(services *structures.RequestValues) *SessionsService {
+	s := &SessionsService{}
 	s.services = services
-	s.database = services.Services.Db
-	s.db = s.database.GetDatabase()
-	s.coll = s.db.Collection(collectionName)
+	s.db = services.Services.Db.GetDatabase()
 	s.user = services.User
 	s.query = &services.Query
 	s.sessionDb = services.Services.SessionsDB
 	s.permissionsDb = services.Services.PermissionsDB
-	s.context = s.database.GetContext()
+	s.historyDb = services.Services.HistoryDB
 	return s
 }
 
 // List returns a list of user sessions from the collection
-func (s *HistoriesService) List(filter bson.D) (*models.HistHistoriesModel, *logger.HttpError) {
+func (s *SessionsService) List(filter string, args ...any) (*models.Users, *logger.HttpError) {
 
-	opts := options.FindOptions{}
-	if filter == nil {
+	model := models.Users{}
+	models := models.Users{}
 
-		filter = *s.query.Filter
-		opts = *s.query.Options
-	} else {
-
-		opts.SetSkip(0)
-		opts.SetLimit(10)
-		opts.SetSort(
-			bson.D{
-				{Key: "created_at", Value: -1},
-			},
-		)
-	}
-
-	count, err := s.coll.CountDocuments(s.context, filter, nil)
-	if err != nil {
+	if err := s.db.Model(&model).Where(filter, args).Count(&models.Count).Error; err != nil {
 
 		return nil, logger.Error(
 			logger.LogStatusInternalServerError,
@@ -80,10 +61,9 @@ func (s *HistoriesService) List(filter bson.D) (*models.HistHistoriesModel, *log
 		)
 	}
 
-	cursor, err := s.coll.Find(s.context, filter, &opts)
-	if err != nil {
+	if err := s.db.Model(&model).Where(filter, args).Find(&models.Docs).Error; err != nil {
 
-		if err == mongo.ErrNoDocuments {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
 
 			return nil, logger.Error(
 				logger.LogStatusNotFound,
@@ -103,47 +83,53 @@ func (s *HistoriesService) List(filter bson.D) (*models.HistHistoriesModel, *log
 		)
 	}
 
-	docs := &models.HistHistoriesModel{
-		Count: count,
+	for idx := range *models.Docs {
+		(*models.Docs)[idx].Password = ""
 	}
 
-	if err := cursor.All(s.context, docs.Docs); err != nil {
-
-		return nil, logger.Error(
-			logger.LogStatusInternalServerError,
-			nil,
-			"failed fetch results",
-			err,
-			nil,
-		)
-	}
-
-	return nil, nil
+	return &models, nil
 }
 
 // Get returns a single user sessions from the collection
-func (s *HistoriesService) Get(filter bson.D, model *models.HistHistoryModel) *logger.HttpError {
+func (s *SessionsService) Get(model *models.User, filter string, args ...any) *logger.HttpError {
 
-	if filter == nil {
-		filter = bson.D{{Key: "_id", Value: s.query.ID}}
+	query := s.db.Model(model)
+	if filter == "" {
+		query.Where("id = ?", s.query.ID)
+	} else {
+		query.Where(filter, args)
 	}
 
-	if err := s.coll.FindOne(
-		s.context,
-		filter,
-	).Decode(model); err != nil {
+	if err := query.First(model).Error; err != nil {
 
-		if err == mongo.ErrNoDocuments {
-			return logger.Error(logger.LogStatusNotFound, nil, "no documents found", nil, nil)
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+
+			return logger.Error(
+				logger.LogStatusNotFound,
+				nil,
+				"no documents found",
+				nil,
+				nil,
+			)
 		}
-		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
+
+		return logger.Error(
+			logger.LogStatusInternalServerError,
+			nil,
+			"failed to query database",
+			err,
+			nil,
+		)
+
 	}
+
+	model.Password = ""
 
 	return nil
 }
 
 // Create creates a new user session document or returns a logger.HttpError in case of error
-func (s *HistoriesService) Create(model *models.HistHistoryModel) *logger.HttpError {
+func (s *SessionsService) Create(model *models.UserSession) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
@@ -170,13 +156,13 @@ func (s *HistoriesService) Create(model *models.HistHistoryModel) *logger.HttpEr
 }
 
 // Create updates a user session document or returns a logger.HttpError in case of error
-func (s *HistoriesService) Update(model *models.HistHistoryModel) *logger.HttpError {
+func (s *SessionsService) Update(model *models.UserSessionModel) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
 	}
 
-	exists := &models.HistHistoryModel{}
+	exists := &models.UserSessionModel{}
 
 	if err := s.Get(
 		bson.D{
@@ -188,7 +174,16 @@ func (s *HistoriesService) Update(model *models.HistHistoryModel) *logger.HttpEr
 		return err
 	}
 
-	// TODO: History
+	historySvc := histories.New(s.services)
+	history := &models.HistHistoryModel{
+		AppAppID:   s.services.Services.Configuration.GetAppID(),
+		Collection: collectionName,
+		OriginalID: exists.ID,
+		Data:       exists,
+	}
+	if err := historySvc.Create(history); err != nil {
+		return err
+	}
 
 	s.assign(
 		exists,
@@ -208,9 +203,9 @@ func (s *HistoriesService) Update(model *models.HistHistoryModel) *logger.HttpEr
 }
 
 // Delete deletes a user session document or returns a logger.HttpError in case of error
-func (s *HistoriesService) Delete(model *models.HistHistoryModel) *logger.HttpError {
+func (s *SessionsService) Delete(model *models.UserSessionModel) *logger.HttpError {
 
-	exists := &models.HistHistoryModel{}
+	exists := &models.UserSessionModel{}
 
 	if err := s.Get(
 		bson.D{
@@ -222,7 +217,16 @@ func (s *HistoriesService) Delete(model *models.HistHistoryModel) *logger.HttpEr
 		return err
 	}
 
-	// TODO: History
+	historySvc := histories.New(s.services)
+	history := &models.HistHistoryModel{
+		AppAppID:   s.services.Services.Configuration.GetAppID(),
+		Collection: collectionName,
+		OriginalID: exists.ID,
+		Data:       exists,
+	}
+	if err := historySvc.Create(history); err != nil {
+		return err
+	}
 
 	s.assign(
 		exists,
@@ -247,25 +251,25 @@ func (s *HistoriesService) Delete(model *models.HistHistoryModel) *logger.HttpEr
 	return nil
 }
 
-func (m *HistoriesService) Validate(model *models.HistHistoryModel) *logger.HttpError {
+func (m *SessionsService) Validate(model *models.UserSessionModel) *logger.HttpError {
 
 	validate := validator.New()
 
-	// TODO: Validate related
+	if err := validate.Var(model.UserUserID, "required"); err != nil {
+		fields := []string{"userUserId"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid userUserId ", err, nil)
+	}
 
-	/* 	appApp := NewAppAppModel(m.ctx)
-	   	if appErr := m.FindByID(m.AppAppID, appApp); appErr != nil {
+	// TODO: Validate related
+	/* 	user := NewUserUserModel(m.ctx)
+	   	if appErr := m.FindByID(m.UserUserID, user); appErr != nil {
 	   		return appErr
 	   	} */
 
-	if err := validate.Var(model.Collection, "required,gte=1"); err != nil {
-		fields := []string{"collection"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid collection ", err, nil)
-	}
-
 	return nil
 }
-func (s *HistoriesService) assign(to *models.HistHistoryModel, from *models.HistHistoryModel, operation services.Operation) {
+
+func (s *SessionsService) assign(to *models.UserSessionModel, from *models.UserSessionModel, operation services.Operation) {
 
 	now := time.Now().UTC()
 
@@ -282,10 +286,7 @@ func (s *HistoriesService) assign(to *models.HistHistoryModel, from *models.Hist
 
 	} else {
 
-		to.AppAppID = from.AppAppID
-		to.Collection = from.Collection
-		to.OriginalID = from.OriginalID
-		to.Data = from.Data
+		to.UserUserID = from.UserUserID
 	}
 
 	to.UpdatedBy = s.user.ID

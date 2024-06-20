@@ -7,11 +7,11 @@ import (
 type Methods string
 
 const (
-	MethodGet    = "GET"
-	MethodPost   = "POST"
-	MethodPut    = "PUT"
-	MethodPatch  = "PATCH"
-	MethodDelete = "DELETE"
+	MethodGet    Methods = "GET"
+	MethodPost   Methods = "POST"
+	MethodPut    Methods = "PUT"
+	MethodPatch  Methods = "PATCH"
+	MethodDelete Methods = "DELETE"
 )
 
 type AppRouteMethod struct {

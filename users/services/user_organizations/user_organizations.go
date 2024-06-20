@@ -1,4 +1,4 @@
-package users
+package user_organizations
 
 import (
 	"errors"
@@ -16,7 +16,7 @@ import (
 	"gorm.io/gorm"
 )
 
-type UsersService struct {
+type UserOrganizationsService struct {
 	services      *structures.RequestValues
 	db            *gorm.DB
 	user          *token.User
@@ -26,8 +26,8 @@ type UsersService struct {
 	historyDb     *redisdb.RedisDB
 }
 
-func New(services *structures.RequestValues) *UsersService {
-	s := &UsersService{}
+func New(services *structures.RequestValues) *UserOrganizationsService {
+	s := &UserOrganizationsService{}
 	s.services = services
 	s.db = services.Services.Db.GetDatabase()
 	s.user = services.User
@@ -39,10 +39,10 @@ func New(services *structures.RequestValues) *UsersService {
 }
 
 // List returns a list of users from the collection
-func (s *UsersService) List(filter string, args ...any) (*models.Users, *logger.HttpError) {
+func (s *UserOrganizationsService) List(filter string, args ...any) (*models.UserOrganizations, *logger.HttpError) {
 
-	model := models.User{}
-	models := models.Users{}
+	model := models.UserOrganization{}
+	models := models.UserOrganizations{}
 
 	if err := s.db.Model(&model).Where(filter, args).Count(&models.Count).Error; err != nil {
 
@@ -77,15 +77,11 @@ func (s *UsersService) List(filter string, args ...any) (*models.Users, *logger.
 		)
 	}
 
-	for idx := range *models.Docs {
-		(*models.Docs)[idx].Password = ""
-	}
-
 	return &models, nil
 }
 
 // Get returns a single user from the collection
-func (s *UsersService) Get(model *models.User, filter string, args ...any) *logger.HttpError {
+func (s *UserOrganizationsService) Get(model *models.UserOrganization, filter string, args ...any) *logger.HttpError {
 
 	query := s.db.Model(model)
 	if filter == "" {
@@ -114,16 +110,13 @@ func (s *UsersService) Get(model *models.User, filter string, args ...any) *logg
 			err,
 			nil,
 		)
-
 	}
-
-	model.Password = ""
 
 	return nil
 }
 
 // Create creates a new user document or returns a logger.HttpError in case of error
-func (s *UsersService) Create(model *models.User) *logger.HttpError {
+func (s *UserOrganizationsService) Create(model *models.UserOrganization) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
@@ -131,9 +124,9 @@ func (s *UsersService) Create(model *models.User) *logger.HttpError {
 
 	//TODO: organization config any can create user or only the organization
 
-	exists := models.User{}
+	exists := models.UserOrganization{}
 
-	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+	if err := s.db.Where("organization_id = ? AND user_id = ?", model.OrganizationID, model.UserID).First(&exists).Error; err != nil {
 
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -174,27 +167,17 @@ func (s *UsersService) Create(model *models.User) *logger.HttpError {
 }
 
 // Create updates a user document or returns a logger.HttpError in case of error
-func (s *UsersService) Update(model *models.User) *logger.HttpError {
+func (s *UserOrganizationsService) Update(model *models.UserOrganization) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
 	}
 
 	// Security
-	if s.user.ID != model.ID && s.user.OrganizationID != 1 {
+	// TODO: security
 
-		err := errors.New("user documents can only be changed by the owner")
-		return logger.Error(
-			logger.LogStatusUnauthorized,
-			nil,
-			"you don't have enough privileges to change an user document",
-			err,
-			nil,
-		)
-	}
-
-	exists := models.User{}
-	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+	exists := models.UserOrganization{}
+	if err := s.db.Where("organization_id = ? AND user_id = ?", model.OrganizationID, model.UserID).First(&exists).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -237,22 +220,12 @@ func (s *UsersService) Update(model *models.User) *logger.HttpError {
 }
 
 // Delete deletes a user document or returns a logger.HttpError in case of error
-func (s *UsersService) Delete(id uint) *logger.HttpError {
+func (s *UserOrganizationsService) Delete(id uint) *logger.HttpError {
 
-	exists := &models.User{}
+	exists := &models.UserOrganization{}
 
 	// Security
-	if s.user.ID != id && s.user.OrganizationID != 1 {
-
-		err := errors.New("user documents can only be deleted by the owner")
-		return logger.Error(
-			logger.LogStatusUnauthorized,
-			nil,
-			"you don't have enough privileges to delete an user document",
-			err,
-			nil,
-		)
-	}
+	// TODO: security
 
 	if err := s.db.Where("id = ?", exists).First(&exists).Error; err != nil {
 
@@ -282,38 +255,42 @@ func (s *UsersService) Delete(id uint) *logger.HttpError {
 	return nil
 }
 
-func (m *UsersService) Validate(model *models.User) *logger.HttpError {
+func (s *UserOrganizationsService) Validate(model *models.UserOrganization) *logger.HttpError {
 
 	validate := validator.New()
-	if err := validate.Var(model.FirstName, "required"); err != nil {
-		fields := []string{"firstName"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid firstName ", err, nil)
+
+	if err := validate.Var(model.OrganizationID, "required,gte=1"); err != nil {
+		fields := []string{"organizationId"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid organizationId ", err, nil)
 	}
 
-	if err := validate.Var(model.Surname, "required,gte=1"); err != nil {
-		fields := []string{"surname"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid surname ", err, nil)
+	orgModel := models.Organization{}
+	if err := s.db.Model(&orgModel).Where("id = ?", model.OrganizationID).First(&orgModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fields := []string{"organizationId"}
+			return logger.Error(logger.LogStatusBadRequest, &fields, "invalid organizationId ", err, nil)
+		}
+		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
 	}
 
-	if err := validate.Var(model.Email, "required,email"); err != nil {
-		fields := []string{"email"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid email ", err, nil)
+	userModel := models.User{}
+	if err := s.db.Model(&userModel).Where("id = ?", model.UserID).First(&userModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fields := []string{"userId"}
+			return logger.Error(logger.LogStatusBadRequest, &fields, "invalid userId ", err, nil)
+		}
+		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
 	}
 
-	if err := validate.Var(model.Password, "required,gte=6"); err != nil {
-		fields := []string{"password"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid password ", err, nil)
-	}
-
-	if err := validate.Var(model.Terms, "required"); err != nil {
-		fields := []string{"terms"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid terms ", err, nil)
+	if err := validate.Var(model.Active, "required"); err != nil {
+		fields := []string{"active"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
 
 	return nil
 }
 
-func (s *UsersService) assign(to *models.User, from *models.User, operation services.Operation) {
+func (s *UserOrganizationsService) assign(to *models.UserOrganization, from *models.UserOrganization, operation services.Operation) {
 
 	now := time.Now().UTC()
 
@@ -329,13 +306,8 @@ func (s *UsersService) assign(to *models.User, from *models.User, operation serv
 
 	} else {
 
-		to.FirstName = from.FirstName
-		to.Surname = from.Surname
-		to.Email = from.Email
-		to.Password = from.Password
-		to.Terms = from.Terms
-		to.AvatarUrl = from.AvatarUrl
-		to.EmailVerified = from.EmailVerified
+		to.OrganizationID = from.OrganizationID
+		to.UserID = from.UserID
 		to.Active = from.Active
 	}
 

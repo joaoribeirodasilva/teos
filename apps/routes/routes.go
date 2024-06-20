@@ -7,20 +7,12 @@ import (
 
 func RegisterRoutes(router *server.Router) {
 
-	router.Services.Gin.GET("/apps/apps", router.Variables, router.IsLogged, controllers.AppAppsList)
-	//router.Gin.GET("/apps/apps", router.Variables, controllers.AppAppsList)
-	router.Services.Gin.GET("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsGet)
-	//router.Gin.GET("/apps/apps/:id", router.Variables, controllers.AppAppsGet)
-	//router.Gin.POST("/apps/apps", router.Variables, router.IsLogged, controllers.AppAppsCreate)
-	router.Services.Gin.POST("/apps/apps", router.Variables, controllers.AppAppsCreate)
-
-	router.Services.Gin.PUT("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsUpdate)
-	//router.Gin.PUT("/apps/apps/:id", router.Variables, controllers.AppAppsUpdate)
-
-	router.Services.Gin.PATCH("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsUpdate)
-
-	router.Services.Gin.DELETE("/apps/apps/:id", router.Variables, router.IsLogged, controllers.AppAppsDelete)
-	//router.Gin.DELETE("/apps/apps/:id", router.Variables, controllers.AppAppsDelete)
+	router.Services.Gin.GET("/apps/apps", router.Variables, router.IsLogged, controllers.ApplicationsList)
+	router.Services.Gin.GET("/apps/apps/:id", router.Variables, router.IsLogged, controllers.ApplicationsGet)
+	router.Services.Gin.POST("/apps/apps", router.Variables, controllers.ApplicationsCreate)
+	router.Services.Gin.PUT("/apps/apps/:id", router.Variables, router.IsLogged, controllers.ApplicationsUpdate)
+	router.Services.Gin.PATCH("/apps/apps/:id", router.Variables, router.IsLogged, controllers.ApplicationsUpdate)
+	router.Services.Gin.DELETE("/apps/apps/:id", router.Variables, router.IsLogged, controllers.ApplicationsDelete)
 
 	router.Services.Gin.GET("/apps/configurations", router.Variables, router.IsLogged, controllers.AppConfigurationsList)
 	router.Services.Gin.GET("/apps/configurations:id", router.Variables, router.IsLogged, controllers.AppConfigurationsGet)
@@ -36,11 +28,18 @@ func RegisterRoutes(router *server.Router) {
 	router.Services.Gin.PATCH("/apps/routes/:id", router.Variables, router.IsLogged, controllers.AppRoutesUpdate)
 	router.Services.Gin.DELETE("/apps/routes/:id", router.Variables, router.IsLogged, controllers.AppRoutesDelete)
 
-	router.Services.Gin.GET("/apps/routesblocks", router.Variables, router.IsLogged, controllers.AppRoutesBlocksList)
-	router.Services.Gin.GET("/apps/routesblocks/:id", router.Variables, router.IsLogged, controllers.AppRoutesBlocksGet)
-	router.Services.Gin.POST("/apps/routesblocks", router.Variables, router.IsLogged, controllers.AppRoutesBlocksCreate)
-	router.Services.Gin.PUT("/apps/routesblocks/:id", router.Variables, router.IsLogged, controllers.AppRoutesBlocksUpdate)
-	router.Services.Gin.PATCH("/apps/routesblocks/:id", router.Variables, router.IsLogged, controllers.AppRoutesBlocksUpdate)
-	router.Services.Gin.DELETE("/apps/routesblocks/:id", router.Variables, router.IsLogged, controllers.AppRoutesBlocksDelete)
+	router.Services.Gin.GET("/apps/environments", router.Variables, router.IsLogged, controllers.AppEnvironmentsList)
+	router.Services.Gin.GET("/apps/environments/:id", router.Variables, router.IsLogged, controllers.AppEnvironmentsGet)
+	router.Services.Gin.POST("/apps/environments", router.Variables, router.IsLogged, controllers.AppEnvironmentsCreate)
+	router.Services.Gin.PUT("/apps/environments/:id", router.Variables, router.IsLogged, controllers.AppEnvironmentsUpdate)
+	router.Services.Gin.PATCH("/apps/environments/:id", router.Variables, router.IsLogged, controllers.AppEnvironmentsUpdate)
+	router.Services.Gin.DELETE("/apps/environments/:id", router.Variables, router.IsLogged, controllers.AppEnvironmentsDelete)
+
+	router.Services.Gin.GET("/apps/routemethods", router.Variables, router.IsLogged, controllers.AppRouteMethodsList)
+	router.Services.Gin.GET("/apps/routemethods/:id", router.Variables, router.IsLogged, controllers.AppRouteMethodsGet)
+	router.Services.Gin.POST("/apps/routemethods", router.Variables, router.IsLogged, controllers.AppRouteMethodsCreate)
+	router.Services.Gin.PUT("/apps/routemethods/:id", router.Variables, router.IsLogged, controllers.AppRouteMethodsUpdate)
+	router.Services.Gin.PATCH("/apps/routemethods/:id", router.Variables, router.IsLogged, controllers.AppRouteMethodsUpdate)
+	router.Services.Gin.DELETE("/apps/routemethods/:id", router.Variables, router.IsLogged, controllers.AppRouteMethodsDelete)
 
 }

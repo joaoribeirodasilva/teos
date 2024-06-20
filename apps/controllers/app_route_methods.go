@@ -4,14 +4,14 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	app_route_methods "github.com/joaoribeirodasilva/teos/apps/services/app_route_methods"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/responses"
-	"github.com/joaoribeirodasilva/teos/users/services/resets"
 )
 
-func UserResetsList(c *gin.Context) {
+func AppRouteMethodsList(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -19,9 +19,9 @@ func UserResetsList(c *gin.Context) {
 		return
 	}
 
-	svc := resets.New(services)
+	svc := app_route_methods.New(services)
 
-	docs, err := svc.List(nil)
+	docs, err := svc.List("")
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
@@ -31,7 +31,7 @@ func UserResetsList(c *gin.Context) {
 	c.JSON(http.StatusOK, docs)
 }
 
-func UserResetsGet(c *gin.Context) {
+func AppRouteMethodsGet(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -39,10 +39,10 @@ func UserResetsGet(c *gin.Context) {
 		return
 	}
 
-	svc := resets.New(services)
-	doc := &models.UserResetModel{}
+	svc := app_route_methods.New(services)
+	doc := &models.AppRouteMethod{}
 
-	if err := svc.Get(nil, doc); err != nil {
+	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
@@ -51,7 +51,7 @@ func UserResetsGet(c *gin.Context) {
 	c.JSON(http.StatusOK, &doc)
 }
 
-func UserResetsCreate(c *gin.Context) {
+func AppRouteMethodsCreate(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -60,8 +60,8 @@ func UserResetsCreate(c *gin.Context) {
 		return
 	}
 
-	svc := resets.New(services)
-	doc := &models.UserResetModel{}
+	svc := app_route_methods.New(services)
+	doc := &models.AppRouteMethod{}
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 
@@ -81,9 +81,10 @@ func UserResetsCreate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, response)
+
 }
 
-func UserResetsUpdate(c *gin.Context) {
+func AppRouteMethodsUpdate(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -92,8 +93,9 @@ func UserResetsUpdate(c *gin.Context) {
 		return
 	}
 
-	svc := resets.New(services)
-	doc := &models.UserResetModel{}
+	svc := app_route_methods.New(services)
+	doc := &models.AppRouteMethod{}
+	doc.ID = *services.Query.ID
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 
@@ -109,4 +111,33 @@ func UserResetsUpdate(c *gin.Context) {
 	}
 
 	c.Status(http.StatusOK)
+}
+
+func AppRouteMethodsDelete(c *gin.Context) {
+
+	services, err := controllers.GetValues(c)
+	if err != nil {
+
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
+
+	svc := app_route_methods.New(services)
+	doc := &models.AppRouteMethod{}
+
+	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+
+		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
+		c.AbortWithStatusJSON(int(httpError.Status), httpError)
+		return
+	}
+
+	if err := svc.Delete(doc.ID); err != nil {
+
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
+
+	c.Status(http.StatusOK)
+
 }

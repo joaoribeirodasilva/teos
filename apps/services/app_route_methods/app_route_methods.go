@@ -1,8 +1,10 @@
-package users
+package app_route_methods
 
 import (
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
@@ -16,7 +18,11 @@ import (
 	"gorm.io/gorm"
 )
 
-type UsersService struct {
+var (
+	methods = []models.Methods{"GET", "POST", "PUT", "PATCH", "DELETE"}
+)
+
+type AppRouteMethodsService struct {
 	services      *structures.RequestValues
 	db            *gorm.DB
 	user          *token.User
@@ -26,8 +32,8 @@ type UsersService struct {
 	historyDb     *redisdb.RedisDB
 }
 
-func New(services *structures.RequestValues) *UsersService {
-	s := &UsersService{}
+func New(services *structures.RequestValues) *AppRouteMethodsService {
+	s := &AppRouteMethodsService{}
 	s.services = services
 	s.db = services.Services.Db.GetDatabase()
 	s.user = services.User
@@ -39,10 +45,10 @@ func New(services *structures.RequestValues) *UsersService {
 }
 
 // List returns a list of users from the collection
-func (s *UsersService) List(filter string, args ...any) (*models.Users, *logger.HttpError) {
+func (s *AppRouteMethodsService) List(filter string, args ...any) (*models.AppRouteMethods, *logger.HttpError) {
 
-	model := models.User{}
-	models := models.Users{}
+	model := models.AppRouteMethod{}
+	models := models.AppRouteMethods{}
 
 	if err := s.db.Model(&model).Where(filter, args).Count(&models.Count).Error; err != nil {
 
@@ -77,15 +83,11 @@ func (s *UsersService) List(filter string, args ...any) (*models.Users, *logger.
 		)
 	}
 
-	for idx := range *models.Docs {
-		(*models.Docs)[idx].Password = ""
-	}
-
 	return &models, nil
 }
 
 // Get returns a single user from the collection
-func (s *UsersService) Get(model *models.User, filter string, args ...any) *logger.HttpError {
+func (s *AppRouteMethodsService) Get(model *models.AppRouteMethod, filter string, args ...any) *logger.HttpError {
 
 	query := s.db.Model(model)
 	if filter == "" {
@@ -117,13 +119,17 @@ func (s *UsersService) Get(model *models.User, filter string, args ...any) *logg
 
 	}
 
-	model.Password = ""
-
 	return nil
 }
 
 // Create creates a new user document or returns a logger.HttpError in case of error
-func (s *UsersService) Create(model *models.User) *logger.HttpError {
+func (s *AppRouteMethodsService) Create(model *models.AppRouteMethod) *logger.HttpError {
+
+	if s.user.OrganizationID != 1 {
+		err := errors.New("the current user does not have permission to create this record")
+		fields := []string{"organizationId"}
+		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
+	}
 
 	if err := s.Validate(model); err != nil {
 		return err
@@ -131,9 +137,15 @@ func (s *UsersService) Create(model *models.User) *logger.HttpError {
 
 	//TODO: organization config any can create user or only the organization
 
-	exists := models.User{}
+	exists := models.AppRouteMethod{}
 
-	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+	if err := s.db.Where(
+		"app_route_id = ? AND ((name = ?) OR (method_id = ? AND uri = ?) ",
+		model.AppRouteID,
+		model.Name,
+		model.Method,
+		model.Uri,
+	).First(&exists).Error; err != nil {
 
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -174,27 +186,29 @@ func (s *UsersService) Create(model *models.User) *logger.HttpError {
 }
 
 // Create updates a user document or returns a logger.HttpError in case of error
-func (s *UsersService) Update(model *models.User) *logger.HttpError {
+func (s *AppRouteMethodsService) Update(model *models.AppRouteMethod) *logger.HttpError {
+
+	if s.user.OrganizationID != 1 {
+		err := errors.New("the current user does not have permission to update this record")
+		fields := []string{"organizationId"}
+		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
+	}
 
 	if err := s.Validate(model); err != nil {
 		return err
 	}
 
 	// Security
-	if s.user.ID != model.ID && s.user.OrganizationID != 1 {
+	// TODO: security
 
-		err := errors.New("user documents can only be changed by the owner")
-		return logger.Error(
-			logger.LogStatusUnauthorized,
-			nil,
-			"you don't have enough privileges to change an user document",
-			err,
-			nil,
-		)
-	}
-
-	exists := models.User{}
-	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+	exists := models.AppRouteMethod{}
+	if err := s.db.Where(
+		"app_route_id = ? AND ((name = ?) OR (method_id = ? AND uri = ?) ",
+		model.AppRouteID,
+		model.Name,
+		model.Method,
+		model.Uri,
+	).First(&exists).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -237,22 +251,18 @@ func (s *UsersService) Update(model *models.User) *logger.HttpError {
 }
 
 // Delete deletes a user document or returns a logger.HttpError in case of error
-func (s *UsersService) Delete(id uint) *logger.HttpError {
+func (s *AppRouteMethodsService) Delete(id uint) *logger.HttpError {
 
-	exists := &models.User{}
+	if s.user.OrganizationID != 1 {
+		err := errors.New("the current user does not have permission to delete this record")
+		fields := []string{"organizationId"}
+		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
+	}
+
+	exists := &models.AppRouteMethod{}
 
 	// Security
-	if s.user.ID != id && s.user.OrganizationID != 1 {
-
-		err := errors.New("user documents can only be deleted by the owner")
-		return logger.Error(
-			logger.LogStatusUnauthorized,
-			nil,
-			"you don't have enough privileges to delete an user document",
-			err,
-			nil,
-		)
-	}
+	// TODO: security
 
 	if err := s.db.Where("id = ?", exists).First(&exists).Error; err != nil {
 
@@ -282,38 +292,50 @@ func (s *UsersService) Delete(id uint) *logger.HttpError {
 	return nil
 }
 
-func (m *UsersService) Validate(model *models.User) *logger.HttpError {
+func (s *AppRouteMethodsService) Validate(model *models.AppRouteMethod) *logger.HttpError {
 
 	validate := validator.New()
-	if err := validate.Var(model.FirstName, "required"); err != nil {
-		fields := []string{"firstName"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid firstName ", err, nil)
+
+	if err := validate.Var(model.AppRouteID, "required,gt=0"); err != nil {
+		fields := []string{"appRouteId"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid appRouteId ", err, nil)
 	}
 
-	if err := validate.Var(model.Surname, "required,gte=1"); err != nil {
-		fields := []string{"surname"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid surname ", err, nil)
+	appRouteModel := models.AppRoute{}
+	if err := s.db.Model(&appRouteModel).Where("id = ?", model.AppRouteID).First(&appRouteModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fields := []string{"appRouteId"}
+			return logger.Error(logger.LogStatusBadRequest, &fields, "invalid appRouteId ", err, nil)
+		}
+		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
 	}
 
-	if err := validate.Var(model.Email, "required,email"); err != nil {
-		fields := []string{"email"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid email ", err, nil)
+	if err := validate.Var(model.Name, "required;gt=1"); err != nil {
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
 	}
 
-	if err := validate.Var(model.Password, "required,gte=6"); err != nil {
-		fields := []string{"password"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid password ", err, nil)
+	model.Method = models.Methods(strings.ToUpper(string(model.Method)))
+	if err := validate.Var(model.Method, "required;gt=1"); err != nil {
+		fields := []string{"method"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid method ", err, nil)
 	}
 
-	if err := validate.Var(model.Terms, "required"); err != nil {
-		fields := []string{"terms"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid terms ", err, nil)
+	if !slices.Contains(methods, model.Method) {
+		err := errors.New("method not found")
+		fields := []string{"method"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid method ", err, nil)
+	}
+
+	if err := validate.Var(model.Active, "required"); err != nil {
+		fields := []string{"active"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
 
 	return nil
 }
 
-func (s *UsersService) assign(to *models.User, from *models.User, operation services.Operation) {
+func (s *AppRouteMethodsService) assign(to *models.AppRouteMethod, from *models.AppRouteMethod, operation services.Operation) {
 
 	now := time.Now().UTC()
 
@@ -329,13 +351,12 @@ func (s *UsersService) assign(to *models.User, from *models.User, operation serv
 
 	} else {
 
-		to.FirstName = from.FirstName
-		to.Surname = from.Surname
-		to.Email = from.Email
-		to.Password = from.Password
-		to.Terms = from.Terms
-		to.AvatarUrl = from.AvatarUrl
-		to.EmailVerified = from.EmailVerified
+		to.AppRouteID = from.AppRouteID
+		to.Name = from.Name
+		to.Description = from.Description
+		to.Method = from.Method
+		to.Uri = from.Uri
+		to.Open = from.Open
 		to.Active = from.Active
 	}
 

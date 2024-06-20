@@ -8,10 +8,10 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/responses"
-	"github.com/joaoribeirodasilva/teos/users/services/roles"
+	user_groups "github.com/joaoribeirodasilva/teos/users/services/user_groups"
 )
 
-func UserRolesList(c *gin.Context) {
+func UserGroupsList(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -19,9 +19,9 @@ func UserRolesList(c *gin.Context) {
 		return
 	}
 
-	svc := roles.New(services)
+	svc := user_groups.New(services)
 
-	docs, err := svc.List(nil)
+	docs, err := svc.List("")
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
@@ -31,7 +31,7 @@ func UserRolesList(c *gin.Context) {
 	c.JSON(http.StatusOK, docs)
 }
 
-func UserRolesGet(c *gin.Context) {
+func UserGroupsGet(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -39,10 +39,10 @@ func UserRolesGet(c *gin.Context) {
 		return
 	}
 
-	svc := roles.New(services)
-	doc := &models.UserRoleModel{}
+	svc := user_groups.New(services)
+	doc := &models.UserGroup{}
 
-	if err := svc.Get(nil, doc); err != nil {
+	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
@@ -51,7 +51,7 @@ func UserRolesGet(c *gin.Context) {
 	c.JSON(http.StatusOK, &doc)
 }
 
-func UserRolesCreate(c *gin.Context) {
+func UserGroupsCreate(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -60,8 +60,8 @@ func UserRolesCreate(c *gin.Context) {
 		return
 	}
 
-	svc := roles.New(services)
-	doc := &models.UserRoleModel{}
+	svc := user_groups.New(services)
+	doc := &models.UserGroup{}
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 
@@ -81,9 +81,10 @@ func UserRolesCreate(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, response)
+
 }
 
-func UserRolesUpdate(c *gin.Context) {
+func UserGroupsUpdate(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -92,8 +93,9 @@ func UserRolesUpdate(c *gin.Context) {
 		return
 	}
 
-	svc := roles.New(services)
-	doc := &models.UserRoleModel{}
+	svc := user_groups.New(services)
+	doc := &models.UserGroup{}
+	doc.ID = *services.Query.ID
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 
@@ -111,7 +113,7 @@ func UserRolesUpdate(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
-func UserRolesDelete(c *gin.Context) {
+func UserGroupsDelete(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -120,8 +122,8 @@ func UserRolesDelete(c *gin.Context) {
 		return
 	}
 
-	svc := roles.New(services)
-	doc := &models.UserRoleModel{}
+	svc := user_groups.New(services)
+	doc := &models.UserGroup{}
 
 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 
@@ -130,11 +132,12 @@ func UserRolesDelete(c *gin.Context) {
 		return
 	}
 
-	if err := svc.Delete(doc); err != nil {
+	if err := svc.Delete(doc.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
 	c.Status(http.StatusOK)
+
 }

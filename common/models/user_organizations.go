@@ -6,7 +6,7 @@ import (
 
 type UserOrganization struct {
 	ID             uint          `json:"id" gorm:"column:id;type:uint;primaryKey"`
-	OrganizationId uint          `json:"organizationId" gorm:"column:organization_id;type:uint;not null;"`
+	OrganizationID uint          `json:"organizationId" gorm:"column:organization_id;type:uint;not null;"`
 	Organization   *Organization `json:"organization,omitempty"`
 	UserID         uint          `json:"userId" gorm:"column:user_id;type:uint;not null;"`
 	User           *User         `json:"user,omitempty"`

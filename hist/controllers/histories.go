@@ -5,13 +5,11 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
-	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
-	"github.com/joaoribeirodasilva/teos/common/responses"
-	"github.com/joaoribeirodasilva/teos/hist/services/histories"
+	history "github.com/joaoribeirodasilva/teos/hist/services/history"
 )
 
-func HistoriesList(c *gin.Context) {
+func HistoryList(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -19,9 +17,9 @@ func HistoriesList(c *gin.Context) {
 		return
 	}
 
-	svc := histories.New(services)
+	svc := history.New(services)
 
-	docs, err := svc.List(nil)
+	docs, err := svc.List("")
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
@@ -31,7 +29,7 @@ func HistoriesList(c *gin.Context) {
 	c.JSON(http.StatusOK, docs)
 }
 
-func HistoriesGet(c *gin.Context) {
+func HistoryGet(c *gin.Context) {
 
 	services, err := controllers.GetValues(c)
 	if err != nil {
@@ -39,47 +37,47 @@ func HistoriesGet(c *gin.Context) {
 		return
 	}
 
-	svc := histories.New(services)
-	doc := &models.HistHistoryModel{}
+	svc := history.New(services)
+	doc := &models.History{}
 
-	if err := svc.Get(nil, doc); err != nil {
+	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
 	c.JSON(http.StatusOK, &doc)
-
 }
 
-func HistoriesCreate(c *gin.Context) {
+// func HistoryCreate(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
-	if err != nil {
+// 	services, err := controllers.GetValues(c)
+// 	if err != nil {
 
-		c.AbortWithStatusJSON(int(err.Status), err)
-		return
-	}
+// 		c.AbortWithStatusJSON(int(err.Status), err)
+// 		return
+// 	}
 
-	svc := histories.New(services)
-	doc := &models.HistHistoryModel{}
+// 	svc := history.New(services)
+// 	doc := &models.History{}
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+// 	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
 
-		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
-		c.AbortWithStatusJSON(int(httpError.Status), httpError)
-		return
-	}
+// 		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
+// 		c.AbortWithStatusJSON(int(httpError.Status), httpError)
+// 		return
+// 	}
 
-	if err := svc.Create(doc); err != nil {
+// 	if err := svc.Create(doc); err != nil {
 
-		c.AbortWithStatusJSON(int(err.Status), err)
-		return
-	}
+// 		c.AbortWithStatusJSON(int(err.Status), err)
+// 		return
+// 	}
 
-	response := responses.ResponseCreated{
-		ID: doc.ID,
-	}
+// 	response := responses.ResponseCreated{
+// 		ID: doc.ID,
+// 	}
 
-	c.JSON(http.StatusCreated, response)
-}
+// 	c.JSON(http.StatusCreated, response)
+
+// }
