@@ -16,13 +16,14 @@ type User struct {
 	Name           string
 	Surname        string
 	OrganizationID uint
+	AvatarUrl      string
 }
 
 type Token struct {
 	conf        *configuration.Configuration
 	User        *User
 	token       *jwt.Token
-	TokenString string
+	TokenString *string
 }
 
 const (
@@ -39,7 +40,7 @@ func New(conf *configuration.Configuration) *Token {
 	return t
 }
 
-func (t *Token) Create(user *User, sessionId uint) error {
+func (t *Token) Create(user *User) error {
 
 	var err error
 	var tempInt int64
@@ -60,11 +61,12 @@ func (t *Token) Create(user *User, sessionId uint) error {
 
 	sub := make(map[string]interface{})
 	sub["id"] = user.ID
-	sub["sessionId"] = sessionId
-	sub["organizationId"] = sessionId
+	sub["sessionId"] = user.SessionID
+	sub["organizationId"] = user.OrganizationID
 	sub["email"] = user.Email
 	sub["name"] = user.Name
 	sub["surname"] = user.Surname
+	sub["avatarUrl"] = user.AvatarUrl
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"iss": iss,
@@ -79,7 +81,7 @@ func (t *Token) Create(user *User, sessionId uint) error {
 		return fmt.Errorf("failed to encrypt token")
 	}
 
-	t.TokenString = tokenStr
+	t.TokenString = &tokenStr
 
 	return nil
 }
@@ -148,6 +150,13 @@ func (t *Token) IsValid(tokenString string) bool {
 	}
 	surname := isurname.(string)
 
+	iavatarurl, ok := sub["avatarUrl"]
+	if !ok {
+		return false
+	}
+
+	avatarurl := iavatarurl.(string)
+
 	t.User = &User{
 		ID:             mid,
 		SessionID:      sessionid,
@@ -155,6 +164,7 @@ func (t *Token) IsValid(tokenString string) bool {
 		Email:          email,
 		Name:           nome,
 		Surname:        surname,
+		AvatarUrl:      avatarurl,
 	}
 
 	return true

@@ -6,7 +6,7 @@ import (
 
 type AuthGroup struct {
 	ID             uint          `json:"id" gorm:"column:id;type:uint;primaryKey"`
-	OrganizationId uint          `json:"organizationId" gorm:"column:organization_id;type:uint;not null;"`
+	OrganizationID uint          `json:"organizationId" gorm:"column:organization_id;type:uint;not null;"`
 	Organization   *Organization `json:"organization,omitempty"`
 	Name           string        `json:"name" gorm:"column:name;type:string;size:255;not null;"`
 	Description    *string       `json:"description" gorm:"column:description;type:string;size:65536;"`

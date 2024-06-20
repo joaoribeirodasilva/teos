@@ -1,90 +1,87 @@
 package cookie
 
 import (
+	"time"
+
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 )
 
 type Cookie struct {
-	Name     string
-	Value    string
-	MaxAge   int64
-	Path     string
-	Domain   string
-	Secure   bool
-	HttpOnly bool
+	config   *configuration.Configuration
+	value    string
+	name     string
+	maxAge   int
+	domain   string
+	path     string
+	secure   bool
+	httpOnly bool
 	//server   *gin.Context
 }
 
-func New(
-	server *gin.Context,
-	Name string,
-	Value string,
-	MaxAge int64,
-	Domain string,
-	Secure int,
-	HttpOnly int) *Cookie {
+func New(config *configuration.Configuration, tokenString string) *Cookie {
 
 	c := &Cookie{
-		Name:     Name,
-		Value:    Value,
-		MaxAge:   MaxAge,
-		Path:     "/",
-		Domain:   Domain,
-		Secure:   false,
-		HttpOnly: false,
+		config: config,
+		value:  tokenString,
 	}
-
-	tempSecure := false
-	if Secure != 0 {
-		tempSecure = true
-	}
-	c.Secure = tempSecure
-
-	tempHttpOnly := false
-	if HttpOnly != 0 {
-		tempHttpOnly = true
-	}
-	c.HttpOnly = tempHttpOnly
 
 	return c
 }
 
-func NewFromConfiguration(value string, config *configuration.Configuration) (*Cookie, error) {
-
+func (c *Cookie) Create() error {
 	var err error
-	c := &Cookie{}
 
-	c.Name, err = config.GetString("COOKIE_NAME")
+	c.name, err = c.config.GetString("AUTH_COOKIE_NAME")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	c.MaxAge, err = config.GetInt("COOKIE_EXPIRE")
+	tempAge, err := c.config.GetInt("AUTH_COOKIE_EXPIRE")
 	if err != nil {
-		return nil, err
+		return err
+	}
+	c.maxAge = int(tempAge)
+
+	c.domain, err = c.config.GetString("AUTH_COOKIE_DOMAIN")
+	if err != nil {
+		return err
 	}
 
-	c.Domain, err = config.GetString("COOKIE_DOMAIN")
+	c.path, err = c.config.GetString("AUTH_COOKIE_PATH")
 	if err != nil {
-		return nil, err
+		c.path = ""
 	}
 
-	c.Secure, err = config.GetBool("COOKIE_SECURE")
+	c.secure, err = c.config.GetBool("AUTH_COOKIE_SECURE")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	c.HttpOnly, err = config.GetBool("COOKIE_SECURE")
+	c.httpOnly, err = c.config.GetBool("AUTH_COOKIE_SECURE")
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	return c, nil
+	c.maxAge = int(time.Now().Add(time.Second * time.Duration(c.maxAge)).Unix())
+
+	return nil
 }
 
-func (c *Cookie) SetCookie(server *gin.Context) {
+func (c *Cookie) Set(server *gin.Context) {
 
-	server.SetCookie(c.Name, c.Value, int(c.MaxAge), c.Path, c.Domain, c.Secure, c.HttpOnly)
+	server.SetCookie(c.name, c.value, c.maxAge, c.path, c.domain, c.secure, c.httpOnly)
 
+}
+
+func (c *Cookie) SetEmpty(server *gin.Context) error {
+
+	name, err := c.config.GetString("AUTH_COOKIE_NAME")
+	if err != nil {
+		return err
+	}
+
+	server.SetCookie(name, "", 0, "", "", false, false)
+
+	return nil
 }
