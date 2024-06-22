@@ -24,5 +24,5 @@ func (h *Http) Parse(g *gin.Context) error {
 
 	h.Request = NewRequest(h.conf, g)
 
-	return nil
+	return h.Request.Parse()
 }

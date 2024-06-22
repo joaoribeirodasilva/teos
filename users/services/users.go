@@ -10,6 +10,7 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/payload"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
+	"github.com/joaoribeirodasilva/teos/common/utils/password"
 	"gorm.io/gorm"
 )
 
@@ -116,6 +117,8 @@ func (s *UsersService) Get(model *models.User, filter string, args ...any) *logg
 // Create creates a new user document or returns a logger.HttpError in case of error
 func (s *UsersService) Create(model *models.User) *logger.HttpError {
 
+	var err error
+
 	if err := s.Validate(model); err != nil {
 		return err
 	}
@@ -124,7 +127,7 @@ func (s *UsersService) Create(model *models.User) *logger.HttpError {
 
 	exists := models.User{}
 
-	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+	if err = s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
 
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -150,6 +153,22 @@ func (s *UsersService) Create(model *models.User) *logger.HttpError {
 		s.assign(model, nil, payload.SVC_OPERATION_CREATE)
 	}
 
+	if model.Password == "" {
+		fields := []string{"password"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid password ", err, nil)
+	}
+
+	model.Password, err = password.Hash(model.Password)
+	if err != nil {
+		return logger.Error(
+			logger.LogStatusInternalServerError,
+			nil,
+			"failed to hash password",
+			err,
+			nil,
+		)
+	}
+
 	if err := s.db.Create(model).Error; err != nil {
 
 		return logger.Error(
@@ -166,6 +185,8 @@ func (s *UsersService) Create(model *models.User) *logger.HttpError {
 
 // Create updates a user document or returns a logger.HttpError in case of error
 func (s *UsersService) Update(model *models.User) *logger.HttpError {
+
+	var err error
 
 	if err := s.Validate(model); err != nil {
 		return err
@@ -185,7 +206,7 @@ func (s *UsersService) Update(model *models.User) *logger.HttpError {
 	}
 
 	exists := models.User{}
-	if err := s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
+	if err = s.db.Where("email = ?", model.Email).First(&exists).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -197,6 +218,21 @@ func (s *UsersService) Update(model *models.User) *logger.HttpError {
 				nil,
 			)
 		}
+	}
+
+	if model.Password != "" {
+		exists.Password, err = password.Hash(model.Password)
+		if err != nil {
+			return logger.Error(
+				logger.LogStatusInternalServerError,
+				nil,
+				"failed to hash password",
+				err,
+				nil,
+			)
+		}
+	} else {
+		model.Password = exists.Password
 	}
 
 	if exists.ID != model.ID {
@@ -293,10 +329,10 @@ func (m *UsersService) Validate(model *models.User) *logger.HttpError {
 		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid email ", err, nil)
 	}
 
-	if err := validate.Var(model.Password, "required,gte=6"); err != nil {
+	/* 	if err := validate.Var(model.Password, "required,gte=6"); err != nil {
 		fields := []string{"password"}
 		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid password ", err, nil)
-	}
+	} */
 
 	if err := validate.Var(model.Terms, "required"); err != nil {
 		fields := []string{"terms"}

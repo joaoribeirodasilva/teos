@@ -9,7 +9,7 @@ type User struct {
 	FirstName     string     `json:"firstName" gorm:"column:first_name;type:string;size:255;not null;"`
 	Surname       string     `json:"surname" gorm:"column:surname;type:string;size:255;not null;"`
 	Email         string     `json:"email" gorm:"column:email;type:string;size:255;not null;unique;"`
-	Password      string     `json:"password,omitempty" gorm:"column:password,type:string;size:255;not null;"`
+	Password      string     `json:"password,omitempty" gorm:"column:password;type:string;size:255;not null;"`
 	Terms         *time.Time `json:"terms" gorm:"column:terms;type:time;"`
 	AvatarUrl     string     `json:"avatarUrl" gorm:"column:avatar_url;type:string;size:255;not null;default:0"`
 	EmailVerified *time.Time `json:"emailVerified" gorm:"column:email_verified;type:time;not null;"`

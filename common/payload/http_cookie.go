@@ -30,6 +30,7 @@ type HttpCookie struct {
 	ctx         *gin.Context
 	tokenClaims TokenClaims
 	UserSession *SessionAuth
+	Ttl         int
 }
 
 func NewHttpCookie(conf *configuration.ConfigCookie, ctx *gin.Context) *HttpCookie {
@@ -42,12 +43,13 @@ func NewHttpCookie(conf *configuration.ConfigCookie, ctx *gin.Context) *HttpCook
 			iss: conf.Domain,
 			aud: "users",
 		},
+		Ttl: conf.MaxAge,
 	}
 }
 
 func (c *HttpCookie) Parse() error {
 
-	jwt, err := c.ctx.Cookie("gin_cookie")
+	jwt, err := c.ctx.Cookie(c.conf.Name)
 	if err != nil {
 		return err
 	}
@@ -82,9 +84,13 @@ func (c *HttpCookie) SetCookie() error {
 		return fmt.Errorf("failed to encrypt token")
 	}
 
-	c.ctx.SetCookie("gin_cookie", tokenStr, c.conf.MaxAge, "/", c.conf.Domain, c.conf.Secure, c.conf.HttpOnly)
+	c.ctx.SetCookie(c.conf.Name, tokenStr, c.conf.MaxAge, "/", c.conf.Domain, c.conf.Secure, c.conf.HttpOnly)
 
 	return nil
+}
+
+func (c *HttpCookie) SetEmptyCookie() {
+	c.ctx.SetCookie(c.conf.Name, "", c.conf.MaxAge, "/", c.conf.Domain, c.conf.Secure, c.conf.HttpOnly)
 }
 
 func (c *HttpCookie) getTokenClaims(jwtToken string) error {

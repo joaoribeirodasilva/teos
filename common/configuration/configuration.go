@@ -196,7 +196,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "HTTP_BIND_ADDR (must be a string)")
 		}
 	}
-	c.services.Http.Addr = conf.Val.(string)
+	tempStrPtr, ok := conf.Val.(*string)
+	if ok {
+		c.services.Http.Addr = *tempStrPtr
+	}
 
 	conf, ok = c.keys["HTTP_BIND_PORT"]
 	if ok {
@@ -204,7 +207,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "HTTP_BIND_ADDR (must be an int)")
 		}
 	}
-	c.services.Http.Port = conf.Val.(int)
+	tempIntPtr, ok := conf.Val.(*int64)
+	if ok {
+		c.services.Http.Port = int(*tempIntPtr)
+	}
 
 	// Cookie Service
 	conf, ok = c.keys["AUTH_COOKIE_NAME"]
@@ -213,7 +219,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "AUTH_COOKIE_NAME (must be a string)")
 		}
 	}
-	c.services.Cookie.Name = conf.Val.(string)
+	tempStrPtr, ok = conf.Val.(*string)
+	if ok {
+		c.services.Cookie.Name = *tempStrPtr
+	}
 
 	conf, ok = c.keys["AUTH_COOKIE_EXPIRE"]
 	if ok {
@@ -221,7 +230,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "AUTH_COOKIE_EXPIRE (must be an int)")
 		}
 	}
-	c.services.Cookie.MaxAge = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.Cookie.MaxAge = int(*tempIntPtr)
+	}
 
 	conf, ok = c.keys["AUTH_COOKIE_DOMAIN"]
 	if ok {
@@ -229,15 +241,18 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "AUTH_COOKIE_DOMAIN (must be a string)")
 		}
 	}
-	c.services.Cookie.Domain = conf.Val.(string)
+	tempStrPtr, ok = conf.Val.(*string)
+	if ok {
+		c.services.Cookie.Domain = *tempStrPtr
+	}
 
 	conf, ok = c.keys["AUTH_COOKIE_HTTP_ONLY"]
 	if ok {
 		if conf.ValType != "bool" {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "AUTH_COOKIE_HTTP_ONLY (must be a bool)")
 		}
-		tempBool := conf.Val.(int)
-		if tempBool != 0 {
+		tempBool, ok := conf.Val.(*int64)
+		if ok && *tempBool != 0 {
 			c.services.Cookie.HttpOnly = true
 		}
 	}
@@ -247,8 +262,8 @@ func (c *Config) getServicesConfigurations() error {
 		if conf.ValType != "bool" {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "AUTH_COOKIE_SECURE (must be a bool)")
 		}
-		tempBool := conf.Val.(int)
-		if tempBool != 0 {
+		tempBool, ok := conf.Val.(*int64)
+		if ok && *tempBool != 0 {
 			c.services.Cookie.Secure = true
 		}
 	}
@@ -259,7 +274,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "AUTH_SECRET_KEY (must be a string)")
 		}
 	}
-	c.services.Cookie.Domain = conf.Val.(string)
+	tempStrPtr, ok = conf.Val.(*string)
+	if ok {
+		c.services.Cookie.Secret = *tempStrPtr
+	}
 
 	// MemDbs
 	// Permissions
@@ -269,7 +287,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_PERMISSIONS_ADDR (must be a string)")
 		}
 	}
-	c.services.MemDbs.Permissions.Addr = conf.Val.(string)
+	tempStrPtr, ok = conf.Val.(*string)
+	if ok {
+		c.services.MemDbs.Permissions.Addr = *tempStrPtr
+	}
 
 	conf, ok = c.keys["DB_PERMISSIONS_PORT"]
 	if ok {
@@ -277,7 +298,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_PERMISSIONS_PORT (must be an int)")
 		}
 	}
-	c.services.MemDbs.Permissions.Port = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.Permissions.Port = int(*tempIntPtr)
+	}
 
 	conf, ok = c.keys["DB_PERMISSIONS_DB"]
 	if ok {
@@ -285,7 +309,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_PERMISSIONS_DB (must be an int)")
 		}
 	}
-	c.services.MemDbs.Permissions.Db = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.Permissions.Db = int(*tempIntPtr)
+	}
 
 	// Sessions
 	conf, ok = c.keys["DB_SESSIONS_ADDR"]
@@ -294,7 +321,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_SESSIONS_ADDR (must be a string)")
 		}
 	}
-	c.services.MemDbs.Sessions.Addr = conf.Val.(string)
+	tempStrPtr, ok = conf.Val.(*string)
+	if ok {
+		c.services.MemDbs.Sessions.Addr = *tempStrPtr
+	}
 
 	conf, ok = c.keys["DB_SESSIONS_PORT"]
 	if ok {
@@ -302,7 +332,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_SESSIONS_PORT (must be an int)")
 		}
 	}
-	c.services.MemDbs.Sessions.Port = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.Sessions.Port = int(*tempIntPtr)
+	}
 
 	conf, ok = c.keys["DB_SESSIONS_DB"]
 	if ok {
@@ -310,7 +343,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_SESSIONS_DB (must be an int)")
 		}
 	}
-	c.services.MemDbs.Sessions.Db = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.Sessions.Db = int(*tempIntPtr)
+	}
 
 	// History
 	conf, ok = c.keys["DB_HISTORY_ADDR"]
@@ -319,7 +355,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_HISTORY_ADDR (must be a string)")
 		}
 	}
-	c.services.MemDbs.History.Addr = conf.Val.(string)
+	tempStrPtr, ok = conf.Val.(*string)
+	if ok {
+		c.services.MemDbs.History.Addr = *tempStrPtr
+	}
 
 	conf, ok = c.keys["DB_HISTORY_PORT"]
 	if ok {
@@ -327,7 +366,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_HISTORY_PORT (must be an int)")
 		}
 	}
-	c.services.MemDbs.History.Port = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.History.Port = int(*tempIntPtr)
+	}
 
 	conf, ok = c.keys["DB_HISTORY_DB"]
 	if ok {
@@ -335,7 +377,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_HISTORY_DB (must be an int)")
 		}
 	}
-	c.services.MemDbs.History.Db = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.History.Db = int(*tempIntPtr)
+	}
 
 	// Logs
 	conf, ok = c.keys["DB_LOGS_ADDR"]
@@ -344,7 +389,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_LOGS_ADDR (must be a string)")
 		}
 	}
-	c.services.MemDbs.Logs.Addr = conf.Val.(string)
+	tempStrPtr, ok = conf.Val.(*string)
+	if ok {
+		c.services.MemDbs.Logs.Addr = *tempStrPtr
+	}
 
 	conf, ok = c.keys["DB_LOGS_PORT"]
 	if ok {
@@ -352,7 +400,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_LOGS_PORT (must be an int)")
 		}
 	}
-	c.services.MemDbs.Logs.Port = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.Logs.Port = int(*tempIntPtr)
+	}
 
 	conf, ok = c.keys["DB_LOGS_DB"]
 	if ok {
@@ -360,7 +411,10 @@ func (c *Config) getServicesConfigurations() error {
 			return fmt.Errorf("invalid value type %s for configuration key %s", conf.ValType, "DB_LOGS_DB (must be an int)")
 		}
 	}
-	c.services.MemDbs.Logs.Db = conf.Val.(int)
+	tempIntPtr, ok = conf.Val.(*int64)
+	if ok {
+		c.services.MemDbs.Logs.Db = int(*tempIntPtr)
+	}
 
 	return nil
 }

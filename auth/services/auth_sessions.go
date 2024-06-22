@@ -133,18 +133,18 @@ func (s *AuthSessionsService) Login(email string, passwd string) *logger.HttpErr
 	userOrg := models.UserOrganization{}
 	if err := s.db.Model(&userOrg).Where("user_id = ?", user.ID).First(&userOrg).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return logger.Error(logger.LogStatusForbidden, nil, "user does not belong to the organization", err, nil)
+			return logger.Error(logger.LogStatusForbidden, nil, "user does not belong to an organization", err, nil)
 		}
 		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
 	}
 
-	if userOrg.Active == 0 {
+	if (userOrg.Active == 0 || user.Active == 0) && userOrg.OrganizationID != 1 {
 		err := errors.New("account not active")
 		return logger.Error(logger.LogStatusInternalServerError, nil, "user is not active in the organization", err, nil)
 	}
 
 	session := models.AuthSession{
-		OrganizationID: userOrg.ID,
+		OrganizationID: userOrg.OrganizationID,
 		UserID:         user.ID,
 	}
 
@@ -157,6 +157,21 @@ func (s *AuthSessionsService) Login(email string, passwd string) *logger.HttpErr
 	if err := s.db.Create(&session).Error; err != nil {
 		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to create session in the database", err, nil)
 	}
+
+	s.request.Session.Auth.UserSession = &payload.SessionAuth{
+		ID:             session.ID,
+		UserID:         session.UserID,
+		OrganizationID: session.OrganizationID,
+		Name:           user.FirstName,
+		Surname:        user.Surname,
+		AvatarUrl:      user.AvatarUrl,
+	}
+
+	s.payload.Services.SessionsDb.Set(
+		fmt.Sprintf("%d", s.request.Session.Auth.UserSession.ID),
+		s.request.Session.Auth.UserSession,
+		s.request.Session.Auth.Ttl,
+	)
 
 	//auth := authentication.New(s.payload.Services.Configuration, s.sessionDb, user.ID, userOrg.ID, session.ID, user.Email, user.FirstName, user.Surname, user.AvatarUrl)
 

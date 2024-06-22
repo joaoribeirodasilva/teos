@@ -30,7 +30,15 @@ func (r *Router) Services(c *gin.Context) {
 	session.Email = "teos@teos.com.br"
 	session.AvatarUrl = ""
 
-	r.Service.Http.Request.Session.Auth.UserSession = session
+	if err := r.Service.Http.Parse(c); err != nil {
+		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "failed to parse request", err, nil)
+		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
+		return
+	}
+
+	if r.Service.Http.Request.Session.Auth.UserSession == nil {
+		r.Service.Http.Request.Session.Auth.UserSession = session
+	}
 
 	c.Set("service", r.Service)
 	c.Next()
@@ -43,13 +51,20 @@ func (r *Router) SendAuth(c *gin.Context) {
 	if !ok {
 		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "invalid service pointer", nil, nil)
 		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
+		return
 	}
 
-	if err := services.Http.Request.Session.Auth.SetCookie(); err != nil {
-		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "failed to generate session cookie", err, nil)
-		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
-		c.Abort()
-		return
+	if services.Http.Request.Session.Auth != nil &&
+		services.Http.Request.Session.Auth.UserSession != nil &&
+		services.Http.Request.Session.Auth.UserSession.ID != 0 {
+		if err := services.Http.Request.Session.Auth.SetCookie(); err != nil {
+			httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "failed to generate session cookie", err, nil)
+			c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
+			c.Abort()
+			return
+		}
+	} else {
+		services.Http.Request.Session.Auth.SetEmptyCookie()
 	}
 
 	c.Next()
@@ -57,9 +72,19 @@ func (r *Router) SendAuth(c *gin.Context) {
 
 func (r *Router) IsLogged(c *gin.Context) {
 
-	// set session
-	// check route open
-	// authorization
+	serviceInterface := c.MustGet("service")
+	services, ok := serviceInterface.(*payload.Payload)
+	if !ok {
+		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "invalid service pointer", nil, nil)
+		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
+		return
+	}
+
+	if services.Http.Request.Session.Auth.UserSession == nil || services.Http.Request.Session.Auth.UserSession.ID <= 1 {
+		httpErr := logger.Error(logger.LogStatusForbidden, nil, "invalid session", nil, nil)
+		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
+		return
+	}
 
 	/* 	cookie, err := c.Cookie("teos_auth")
 	   	if err != nil {

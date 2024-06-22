@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joaoribeirodasilva/teos/common/database"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 )
 
@@ -20,7 +19,7 @@ type Server struct {
 	Service *gin.Engine
 }
 
-func New(db *database.Db, addr string, port int) *Server {
+func New(addr string, port int) *Server {
 
 	s := new(Server)
 	s.addr = addr

@@ -5,11 +5,11 @@ type EnvironmentTypes int
 const (
 	defaultEnvironmentID = 5
 
-	EnvDev EnvironmentTypes = iota + 1
-	EnvLocalDev
-	EnvTest
-	EnvEval
-	EnvProd
+	EnvDev      EnvironmentTypes = 1
+	EnvLocalDev EnvironmentTypes = 2
+	EnvTest     EnvironmentTypes = 3
+	EnvEval     EnvironmentTypes = 4
+	EnvProd     EnvironmentTypes = 5
 )
 
 var (

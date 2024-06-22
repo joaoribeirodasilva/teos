@@ -10,7 +10,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type LogStatus uint8
+type LogStatus uint
 type LogTypes uint8
 type LogLevel uint8
 

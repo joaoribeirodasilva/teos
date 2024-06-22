@@ -14,16 +14,18 @@ type RedisDB struct {
 	name     string
 	client   *redis.Client
 	addr     string
+	port     int
 	db       int
 	username string
 	password string
 }
 
-func New(name string, addr string, database int, username string, password string) *RedisDB {
+func New(name string, addr string, port int, database int, username string, password string) *RedisDB {
 
 	r := &RedisDB{
 		name:     name,
 		addr:     addr,
+		port:     port,
 		db:       database,
 		username: username,
 		password: password,
@@ -35,7 +37,7 @@ func New(name string, addr string, database int, username string, password strin
 func (r *RedisDB) Connect() error {
 
 	opts := redis.Options{
-		Addr:     r.addr,
+		Addr:     fmt.Sprintf("%s:%d", r.addr, r.port),
 		DB:       r.db,
 		Username: r.username,
 		Password: r.password,
