@@ -2,64 +2,65 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/joaoribeirodasilva/teos/common/controllers"
-	"github.com/joaoribeirodasilva/teos/common/logger"
-	"github.com/joaoribeirodasilva/teos/common/structures"
-	"github.com/joaoribeirodasilva/teos/common/utils/token"
+	"github.com/joaoribeirodasilva/teos/common/payload"
 )
 
 type Router struct {
-	Services *structures.Services
+	Service *payload.Payload
 }
 
-func NewRouter(services *structures.Services) *Router {
+func NewRouter(request *payload.Payload) *Router {
 
 	r := &Router{}
 
-	r.Services = services
+	r.Service = request
 
 	return r
 }
 
 func (r *Router) Variables(c *gin.Context) {
 
-	//fmt.Println("router variables")
-	c.Set("services", r.Services)
+	session := &payload.SessionAuth{}
+	session.ID = 0
+	session.OrganizationID = 1
+	session.UserID = 1
+	session.Name = "Sistema"
+	session.Surname = "Teos"
+	session.Email = "teos@teos.com.br"
+	session.AvatarUrl = ""
 
-	tokenUser := token.User{}
-	tokenUser.ID = 1
-	tokenUser.Name = "Sistema"
-	tokenUser.Surname = "Teos"
-	tokenUser.Email = "teos@teos.com.br"
-	tokenUser.SessionID = 0
-	tokenUser.OrganizationID = 1
+	r.Service.Http.Request.Session.Auth.UserSession = session
 
-	c.Set("user", &tokenUser)
+	c.Set("service", r.Service)
 }
 
 func (r *Router) IsLogged(c *gin.Context) {
 
-	cookie, err := c.Cookie("teos_auth")
-	if err != nil {
-		httpErr := logger.Error(logger.LogStatusForbidden, nil, "no credentials", err, nil)
-		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
-		return
-	}
+	// set session
+	// check route open
+	// authorization
 
-	values, httpErr := controllers.MustGetAll(c)
-	if httpErr != nil {
-		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
-		return
-	}
+	/* 	cookie, err := c.Cookie("teos_auth")
+	   	if err != nil {
+	   		httpErr := logger.Error(logger.LogStatusForbidden, nil, "no credentials", err, nil)
+	   		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
+	   		return
+	   	}
 
-	token := token.New(values.Services.Configuration)
-	if !token.IsValid(cookie) {
-		httpErr := logger.Error(logger.LogStatusForbidden, nil, "invalid token", err, nil)
-		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
-		return
-	}
+	   	values, httpErr := controllers.MustGetAll(c)
+	   	if httpErr != nil {
+	   		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
+	   		return
+	   	}
 
-	c.Set("user", token.User)
+	   	token := token.New(values.Services.Configuration)
+	   	if !token.IsValid(cookie) {
+	   		httpErr := logger.Error(logger.LogStatusForbidden, nil, "invalid token", err, nil)
+	   		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
+	   		return
+	   	}
+
+	   	c.Set("user", token.User) */
 
 	c.Next()
 }
