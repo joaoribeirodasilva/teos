@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	app_environments "github.com/joaoribeirodasilva/teos/apps/services/app_environments"
+	"github.com/joaoribeirodasilva/teos/apps/services"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
@@ -13,13 +13,13 @@ import (
 
 func AppEnvironmentsList(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_environments.New(services)
+	svc := services.NewAppEnvironmentsService(payload)
 
 	docs, err := svc.List("")
 	if err != nil {
@@ -33,16 +33,16 @@ func AppEnvironmentsList(c *gin.Context) {
 
 func AppEnvironmentsGet(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_environments.New(services)
+	svc := services.NewAppEnvironmentsService(payload)
 	doc := &models.AppEnvironment{}
 
-	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
+	if err := svc.Get(doc, "id = ?", payload.Http.Request.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
@@ -53,17 +53,17 @@ func AppEnvironmentsGet(c *gin.Context) {
 
 func AppEnvironmentsCreate(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_environments.New(services)
+	svc := services.NewAppEnvironmentsService(payload)
 	doc := &models.AppEnvironment{}
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+	if err := payload.Http.Request.Bind(doc); err != nil {
 
 		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
 		c.AbortWithStatusJSON(int(httpError.Status), httpError)
@@ -86,18 +86,18 @@ func AppEnvironmentsCreate(c *gin.Context) {
 
 func AppEnvironmentsUpdate(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_environments.New(services)
+	svc := services.NewAppEnvironmentsService(payload)
 	doc := &models.AppEnvironment{}
-	doc.ID = *services.Query.ID
+	doc.ID = payload.Http.Request.ID
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+	if err := payload.Http.Request.Bind(doc); err != nil {
 
 		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
 		c.AbortWithStatusJSON(int(httpError.Status), httpError)
@@ -115,24 +115,16 @@ func AppEnvironmentsUpdate(c *gin.Context) {
 
 func AppEnvironmentsDelete(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_environments.New(services)
-	doc := &models.AppEnvironment{}
+	svc := services.NewAppEnvironmentsService(payload)
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
-
-		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
-		c.AbortWithStatusJSON(int(httpError.Status), httpError)
-		return
-	}
-
-	if err := svc.Delete(doc.ID); err != nil {
+	if err := svc.Delete(payload.Http.Request.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return

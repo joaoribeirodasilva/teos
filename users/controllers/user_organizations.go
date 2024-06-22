@@ -8,18 +8,18 @@ import (
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/responses"
-	user_organizations "github.com/joaoribeirodasilva/teos/users/services/user_organizations"
+	"github.com/joaoribeirodasilva/teos/users/services"
 )
 
 func UserOrganizationsList(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := user_organizations.New(services)
+	svc := services.NewUserOrganizationsService(payload)
 
 	docs, err := svc.List("")
 	if err != nil {
@@ -33,16 +33,16 @@ func UserOrganizationsList(c *gin.Context) {
 
 func UserOrganizationsGet(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := user_organizations.New(services)
+	svc := services.NewUserOrganizationsService(payload)
 	doc := &models.UserOrganization{}
 
-	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
+	if err := svc.Get(doc, "id = ?", payload.Http.Request.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
@@ -53,17 +53,17 @@ func UserOrganizationsGet(c *gin.Context) {
 
 func UserOrganizationsCreate(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := user_organizations.New(services)
+	svc := services.NewUserOrganizationsService(payload)
 	doc := &models.UserOrganization{}
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+	if err := payload.Http.Request.Bind(doc); err != nil {
 
 		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
 		c.AbortWithStatusJSON(int(httpError.Status), httpError)
@@ -86,18 +86,18 @@ func UserOrganizationsCreate(c *gin.Context) {
 
 func UserOrganizationsUpdate(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := user_organizations.New(services)
+	svc := services.NewUserOrganizationsService(payload)
 	doc := &models.UserOrganization{}
-	doc.ID = *services.Query.ID
+	doc.ID = payload.Http.Request.ID
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+	if err := payload.Http.Request.Bind(doc); err != nil {
 
 		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
 		c.AbortWithStatusJSON(int(httpError.Status), httpError)
@@ -115,24 +115,16 @@ func UserOrganizationsUpdate(c *gin.Context) {
 
 func UserOrganizationsDelete(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := user_organizations.New(services)
-	doc := &models.UserOrganization{}
+	svc := services.NewUserOrganizationsService(payload)
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
-
-		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
-		c.AbortWithStatusJSON(int(httpError.Status), httpError)
-		return
-	}
-
-	if err := svc.Delete(doc.ID); err != nil {
+	if err := svc.Delete(payload.Http.Request.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return

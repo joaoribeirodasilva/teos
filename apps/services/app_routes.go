@@ -1,4 +1,4 @@
-package app_configurations
+package services
 
 import (
 	"errors"
@@ -8,41 +8,32 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
+	"github.com/joaoribeirodasilva/teos/common/payload"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
-	"github.com/joaoribeirodasilva/teos/common/requests"
-	"github.com/joaoribeirodasilva/teos/common/services"
-	"github.com/joaoribeirodasilva/teos/common/structures"
-	"github.com/joaoribeirodasilva/teos/common/utils/token"
 	"gorm.io/gorm"
 )
 
-type AppConfigurationsService struct {
-	services      *structures.RequestValues
-	db            *gorm.DB
-	user          *token.User
-	query         *requests.QueryString
-	sessionDb     *redisdb.RedisDB
-	permissionsDb *redisdb.RedisDB
-	historyDb     *redisdb.RedisDB
+type AppRoutesService struct {
+	payload *payload.Payload
+	db      *gorm.DB
+	request *payload.HttpRequest
+	history *redisdb.RedisDB
 }
 
-func New(services *structures.RequestValues) *AppConfigurationsService {
-	s := &AppConfigurationsService{}
-	s.services = services
-	s.db = services.Services.Db.GetDatabase()
-	s.user = services.User
-	s.query = &services.Query
-	s.sessionDb = services.Services.SessionsDB
-	s.permissionsDb = services.Services.PermissionsDB
-	s.historyDb = services.Services.HistoryDB
-	return s
+func NewAppRoutesService(payload *payload.Payload) *AppRoutesService {
+	return &AppRoutesService{
+		payload: payload,
+		db:      payload.Services.Db.GetDatabase(),
+		request: payload.Http.Request,
+		history: payload.Services.HistoryDb,
+	}
 }
 
 // List returns a list of users from the collection
-func (s *AppConfigurationsService) List(filter string, args ...any) (*models.AppConfigurations, *logger.HttpError) {
+func (s *AppRoutesService) List(filter string, args ...any) (*models.AppRoutes, *logger.HttpError) {
 
-	model := models.AppConfiguration{}
-	models := models.AppConfigurations{}
+	model := models.AppRoute{}
+	models := models.AppRoutes{}
 
 	if err := s.db.Model(&model).Where(filter, args).Count(&models.Count).Error; err != nil {
 
@@ -81,13 +72,13 @@ func (s *AppConfigurationsService) List(filter string, args ...any) (*models.App
 }
 
 // Get returns a single user from the collection
-func (s *AppConfigurationsService) Get(model *models.AppConfiguration, filter string, args ...any) *logger.HttpError {
+func (s *AppRoutesService) Get(model *models.AppRoute, filter string, args ...any) *logger.HttpError {
 
 	query := s.db.Model(model)
 	if filter == "" {
-		query.Where("id = ?", s.query.ID)
+		query.Where("id = ?", s.request.ID)
 	} else {
-		query.Where(filter, args)
+		query.Where(s.request.Query.Filter)
 	}
 
 	if err := query.First(model).Error; err != nil {
@@ -110,16 +101,15 @@ func (s *AppConfigurationsService) Get(model *models.AppConfiguration, filter st
 			err,
 			nil,
 		)
-
 	}
 
 	return nil
 }
 
 // Create creates a new user document or returns a logger.HttpError in case of error
-func (s *AppConfigurationsService) Create(model *models.AppConfiguration) *logger.HttpError {
+func (s *AppRoutesService) Create(model *models.AppRoute) *logger.HttpError {
 
-	if s.user.OrganizationID != 1 {
+	if s.request.Session.Auth.UserSession.OrganizationID != 1 {
 		err := errors.New("the current user does not have permission to create this record")
 		fields := []string{"organizationId"}
 		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
@@ -131,13 +121,14 @@ func (s *AppConfigurationsService) Create(model *models.AppConfiguration) *logge
 
 	//TODO: organization config any can create user or only the organization
 
-	exists := models.AppConfiguration{}
+	exists := models.AppRoute{}
 
 	if err := s.db.Where(
-		"app_environment_id = ? AND application_id = ? AND configuration_key = ?",
-		model.AppEnvironmentID,
+		"application_id = ? AND app_environment_id = ? AND (name = ? OR uri = ?) ",
 		model.ApplicationID,
-		model.ConfigurationKey,
+		model.AppEnvironmentID,
+		model.Name,
+		model.Uri,
 	).First(&exists).Error; err != nil {
 
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -159,9 +150,9 @@ func (s *AppConfigurationsService) Create(model *models.AppConfiguration) *logge
 		exists.DeletedAt = nil
 		exists.DeletedBy = nil
 
-		s.assign(&exists, model, services.SVC_OPERATION_CREATE)
+		s.assign(&exists, model, payload.SVC_OPERATION_CREATE)
 	} else {
-		s.assign(model, nil, services.SVC_OPERATION_CREATE)
+		s.assign(model, nil, payload.SVC_OPERATION_CREATE)
 	}
 
 	if err := s.db.Create(model).Error; err != nil {
@@ -179,25 +170,28 @@ func (s *AppConfigurationsService) Create(model *models.AppConfiguration) *logge
 }
 
 // Create updates a user document or returns a logger.HttpError in case of error
-func (s *AppConfigurationsService) Update(model *models.AppConfiguration) *logger.HttpError {
+func (s *AppRoutesService) Update(model *models.AppRoute) *logger.HttpError {
+
+	if s.request.Session.Auth.UserSession.OrganizationID != 1 {
+		err := errors.New("the current user does not have permission to update this record")
+		fields := []string{"organizationId"}
+		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
+	}
 
 	if err := s.Validate(model); err != nil {
 		return err
 	}
 
 	// Security
-	if s.user.OrganizationID != 1 {
-		err := errors.New("the current user does not have permission to update this record")
-		fields := []string{"organizationId"}
-		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
-	}
+	// TODO: security
 
-	exists := models.AppConfiguration{}
+	exists := models.AppRoute{}
 	if err := s.db.Where(
-		"app_environment_id = ? AND application_id = ? AND configuration_key = ?",
-		model.AppEnvironmentID,
+		"application_id = ? AND app_environment_id = ? AND (name = ? OR uri = ?) ",
 		model.ApplicationID,
-		model.ConfigurationKey,
+		model.AppEnvironmentID,
+		model.Name,
+		model.Uri,
 	).First(&exists).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -224,7 +218,7 @@ func (s *AppConfigurationsService) Update(model *models.AppConfiguration) *logge
 		)
 	}
 
-	s.assign(&exists, model, services.SVC_OPERATION_UPDATE)
+	s.assign(&exists, model, payload.SVC_OPERATION_UPDATE)
 
 	if err := s.db.Save(exists).Error; err != nil {
 
@@ -241,12 +235,12 @@ func (s *AppConfigurationsService) Update(model *models.AppConfiguration) *logge
 }
 
 // Delete deletes a user document or returns a logger.HttpError in case of error
-func (s *AppConfigurationsService) Delete(id uint) *logger.HttpError {
+func (s *AppRoutesService) Delete(id uint) *logger.HttpError {
 
-	exists := &models.AppConfiguration{}
+	exists := &models.AppRoute{}
 
 	// Security
-	if s.user.OrganizationID != 1 {
+	if s.request.Session.Auth.UserSession.OrganizationID != 1 {
 		err := errors.New("the current user does not have permission to delete this record")
 		fields := []string{"organizationId"}
 		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
@@ -266,6 +260,8 @@ func (s *AppConfigurationsService) Delete(id uint) *logger.HttpError {
 		}
 	}
 
+	s.assign(exists, nil, payload.SVC_OPERATION_DELETE)
+
 	if err := s.db.Delete("id = ?", id).Error; err != nil {
 
 		return logger.Error(
@@ -280,29 +276,16 @@ func (s *AppConfigurationsService) Delete(id uint) *logger.HttpError {
 	return nil
 }
 
-func (s *AppConfigurationsService) Validate(model *models.AppConfiguration) *logger.HttpError {
+func (s *AppRoutesService) Validate(model *models.AppRoute) *logger.HttpError {
 
 	validate := validator.New()
 
-	if err := validate.Var(model.AppEnvironmentID, "required,gt=0"); err != nil {
-		fields := []string{"appEnvironmentId"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid appEnvironmentId ", err, nil)
-	}
-	appEnvironmentModel := models.AppEnvironment{}
-	if err := s.db.Model(&appEnvironmentModel).Where("id = ?", model.AppEnvironmentID).First(&appEnvironmentModel).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			fields := []string{"appEnvironmentId"}
-			return logger.Error(logger.LogStatusBadRequest, &fields, "invalid appEnvironmentId ", err, nil)
-		}
-		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
-	}
-
-	if err := validate.Var(model.ApplicationID, "required,gt=0"); err != nil {
+	if err := validate.Var(model.ApplicationID, "required;gt=1"); err != nil {
 		fields := []string{"applicationId"}
 		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid applicationId ", err, nil)
 	}
-	applicationModel := models.Application{}
-	if err := s.db.Model(&applicationModel).Where("id = ?", model.ApplicationID).First(&applicationModel).Error; err != nil {
+	appModel := models.Application{}
+	if err := s.db.Model(&appModel).Where("id = ?", model.ApplicationID).First(&appModel).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			fields := []string{"applicationId"}
 			return logger.Error(logger.LogStatusBadRequest, &fields, "invalid applicationId ", err, nil)
@@ -310,42 +293,61 @@ func (s *AppConfigurationsService) Validate(model *models.AppConfiguration) *log
 		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
 	}
 
-	if err := validate.Var(model.ConfigurationKey, "required;gt=1"); err != nil {
-		fields := []string{"configurationKey"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid configurationKey ", err, nil)
+	if err := validate.Var(model.AppEnvironmentID, "required;gt=1"); err != nil {
+		fields := []string{"appEnvironmentId"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid appEnvironmentId ", err, nil)
+	}
+	appEnvModel := models.AppEnvironment{}
+	if err := s.db.Model(&appEnvModel).Where("id = ?", model.AppEnvironmentID).First(&appEnvModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fields := []string{"appEnvironmentId"}
+			return logger.Error(logger.LogStatusBadRequest, &fields, "invalid appEnvironmentId ", err, nil)
+		}
+		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
+	}
+
+	if err := validate.Var(model.Name, "required;gt=1"); err != nil {
+		fields := []string{"name"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
+	}
+
+	if err := validate.Var(model.Uri, "required;gt=1"); err != nil {
+		fields := []string{"uri"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid uri ", err, nil)
+	}
+
+	if err := validate.Var(model.Active, "required"); err != nil {
+		fields := []string{"active"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
 
 	return nil
 }
 
-func (s *AppConfigurationsService) assign(to *models.AppConfiguration, from *models.AppConfiguration, operation services.Operation) {
+func (s *AppRoutesService) assign(to *models.AppRoute, from *models.AppRoute, operation payload.Operation) {
 
 	now := time.Now().UTC()
 
-	if operation == services.SVC_OPERATION_CREATE {
+	if operation == payload.SVC_OPERATION_CREATE {
 
-		to.CreatedBy = s.user.ID
+		to.CreatedBy = s.request.Session.Auth.UserSession.ID
 		to.CreatedAt = now
 
-	} else if operation == services.SVC_OPERATION_DELETE {
+	} else if operation == payload.SVC_OPERATION_DELETE {
 
-		to.DeletedBy = &s.user.ID
+		to.DeletedBy = &s.request.Session.Auth.UserSession.ID
 		to.DeletedAt = &now
 
 	} else {
 
-		to.AppEnvironmentID = from.AppEnvironmentID
 		to.ApplicationID = from.ApplicationID
-		to.ConfigurationKey = from.ConfigurationKey
-		to.Type = from.Type
-		to.ValString = from.ValString
-		to.ValInt = from.ValInt
-		to.ValDouble = from.ValDouble
-		to.ValDate = from.ValDate
-		to.ValTime = from.ValTime
-		to.ValDateTime = from.ValDateTime
+		to.AppEnvironmentID = from.AppEnvironmentID
+		to.Name = from.Name
+		to.Description = from.Description
+		to.Uri = from.Uri
+		to.Active = from.Active
 	}
 
-	to.UpdatedBy = s.user.ID
+	to.UpdatedBy = s.request.Session.Auth.UserSession.ID
 	to.UpdatedAt = now
 }

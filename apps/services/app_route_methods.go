@@ -1,4 +1,4 @@
-package app_route_methods
+package services
 
 import (
 	"errors"
@@ -10,11 +10,8 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
+	"github.com/joaoribeirodasilva/teos/common/payload"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
-	"github.com/joaoribeirodasilva/teos/common/requests"
-	"github.com/joaoribeirodasilva/teos/common/services"
-	"github.com/joaoribeirodasilva/teos/common/structures"
-	"github.com/joaoribeirodasilva/teos/common/utils/token"
 	"gorm.io/gorm"
 )
 
@@ -23,25 +20,19 @@ var (
 )
 
 type AppRouteMethodsService struct {
-	services      *structures.RequestValues
-	db            *gorm.DB
-	user          *token.User
-	query         *requests.QueryString
-	sessionDb     *redisdb.RedisDB
-	permissionsDb *redisdb.RedisDB
-	historyDb     *redisdb.RedisDB
+	payload *payload.Payload
+	db      *gorm.DB
+	request *payload.HttpRequest
+	history *redisdb.RedisDB
 }
 
-func New(services *structures.RequestValues) *AppRouteMethodsService {
-	s := &AppRouteMethodsService{}
-	s.services = services
-	s.db = services.Services.Db.GetDatabase()
-	s.user = services.User
-	s.query = &services.Query
-	s.sessionDb = services.Services.SessionsDB
-	s.permissionsDb = services.Services.PermissionsDB
-	s.historyDb = services.Services.HistoryDB
-	return s
+func NewAppRouteMethodsService(payload *payload.Payload) *AppRouteMethodsService {
+	return &AppRouteMethodsService{
+		payload: payload,
+		db:      payload.Services.Db.GetDatabase(),
+		request: payload.Http.Request,
+		history: payload.Services.HistoryDb,
+	}
 }
 
 // List returns a list of users from the collection
@@ -91,9 +82,9 @@ func (s *AppRouteMethodsService) Get(model *models.AppRouteMethod, filter string
 
 	query := s.db.Model(model)
 	if filter == "" {
-		query.Where("id = ?", s.query.ID)
+		query.Where("id = ?", s.request.ID)
 	} else {
-		query.Where(filter, args)
+		query.Where(s.request.Query.Filter)
 	}
 
 	if err := query.First(model).Error; err != nil {
@@ -125,7 +116,7 @@ func (s *AppRouteMethodsService) Get(model *models.AppRouteMethod, filter string
 // Create creates a new user document or returns a logger.HttpError in case of error
 func (s *AppRouteMethodsService) Create(model *models.AppRouteMethod) *logger.HttpError {
 
-	if s.user.OrganizationID != 1 {
+	if s.request.Session.Auth.UserSession.OrganizationID != 1 {
 		err := errors.New("the current user does not have permission to create this record")
 		fields := []string{"organizationId"}
 		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
@@ -166,9 +157,9 @@ func (s *AppRouteMethodsService) Create(model *models.AppRouteMethod) *logger.Ht
 		exists.DeletedAt = nil
 		exists.DeletedBy = nil
 
-		s.assign(&exists, model, services.SVC_OPERATION_CREATE)
+		s.assign(&exists, model, payload.SVC_OPERATION_CREATE)
 	} else {
-		s.assign(model, nil, services.SVC_OPERATION_CREATE)
+		s.assign(model, nil, payload.SVC_OPERATION_CREATE)
 	}
 
 	if err := s.db.Create(model).Error; err != nil {
@@ -188,7 +179,7 @@ func (s *AppRouteMethodsService) Create(model *models.AppRouteMethod) *logger.Ht
 // Create updates a user document or returns a logger.HttpError in case of error
 func (s *AppRouteMethodsService) Update(model *models.AppRouteMethod) *logger.HttpError {
 
-	if s.user.OrganizationID != 1 {
+	if s.request.Session.Auth.UserSession.OrganizationID != 1 {
 		err := errors.New("the current user does not have permission to update this record")
 		fields := []string{"organizationId"}
 		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
@@ -234,7 +225,7 @@ func (s *AppRouteMethodsService) Update(model *models.AppRouteMethod) *logger.Ht
 		)
 	}
 
-	s.assign(&exists, model, services.SVC_OPERATION_UPDATE)
+	s.assign(&exists, model, payload.SVC_OPERATION_UPDATE)
 
 	if err := s.db.Save(exists).Error; err != nil {
 
@@ -253,7 +244,7 @@ func (s *AppRouteMethodsService) Update(model *models.AppRouteMethod) *logger.Ht
 // Delete deletes a user document or returns a logger.HttpError in case of error
 func (s *AppRouteMethodsService) Delete(id uint) *logger.HttpError {
 
-	if s.user.OrganizationID != 1 {
+	if s.request.Session.Auth.UserSession.OrganizationID != 1 {
 		err := errors.New("the current user does not have permission to delete this record")
 		fields := []string{"organizationId"}
 		return logger.Error(logger.LogStatusUnauthorized, &fields, "user not authorized", err, nil)
@@ -277,6 +268,8 @@ func (s *AppRouteMethodsService) Delete(id uint) *logger.HttpError {
 			)
 		}
 	}
+
+	s.assign(exists, nil, payload.SVC_OPERATION_DELETE)
 
 	if err := s.db.Delete("id = ?", id).Error; err != nil {
 
@@ -335,18 +328,18 @@ func (s *AppRouteMethodsService) Validate(model *models.AppRouteMethod) *logger.
 	return nil
 }
 
-func (s *AppRouteMethodsService) assign(to *models.AppRouteMethod, from *models.AppRouteMethod, operation services.Operation) {
+func (s *AppRouteMethodsService) assign(to *models.AppRouteMethod, from *models.AppRouteMethod, operation payload.Operation) {
 
 	now := time.Now().UTC()
 
-	if operation == services.SVC_OPERATION_CREATE {
+	if operation == payload.SVC_OPERATION_CREATE {
 
-		to.CreatedBy = s.user.ID
+		to.CreatedBy = s.request.Session.Auth.UserSession.ID
 		to.CreatedAt = now
 
-	} else if operation == services.SVC_OPERATION_DELETE {
+	} else if operation == payload.SVC_OPERATION_DELETE {
 
-		to.DeletedBy = &s.user.ID
+		to.DeletedBy = &s.request.Session.Auth.UserSession.ID
 		to.DeletedAt = &now
 
 	} else {
@@ -360,6 +353,6 @@ func (s *AppRouteMethodsService) assign(to *models.AppRouteMethod, from *models.
 		to.Active = from.Active
 	}
 
-	to.UpdatedBy = s.user.ID
+	to.UpdatedBy = s.request.Session.Auth.UserSession.ID
 	to.UpdatedAt = now
 }

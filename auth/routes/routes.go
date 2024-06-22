@@ -6,9 +6,9 @@ import (
 )
 
 func RegisterRoutes(router *server.Router) {
-	router.Services.Gin.POST("/auth/login", router.Variables, controllers.AuthLogin)
-	router.Services.Gin.POST("/auth/forgot", router.Variables, controllers.AuthForgot)
-	router.Services.Gin.PUT("/auth/reset/:key", router.Variables, controllers.AuthReset)
-	router.Services.Gin.PATCH("/auth/reset/:key", router.Variables, controllers.AuthReset)
-	router.Services.Gin.DELETE("/auth/logout", router.Variables, router.IsLogged, controllers.AuthLogout)
+	router.Service.Http.Engine.POST("/auth/login", router.Services, controllers.AuthLogin)
+	router.Service.Http.Engine.POST("/auth/forgot", router.Services, controllers.AuthForgot)
+	router.Service.Http.Engine.PUT("/auth/reset/:key", router.Services, controllers.AuthReset)
+	router.Service.Http.Engine.PATCH("/auth/reset/:key", router.Services, controllers.AuthReset)
+	router.Service.Http.Engine.DELETE("/auth/logout", router.Services, router.IsLogged, controllers.AuthLogout)
 }

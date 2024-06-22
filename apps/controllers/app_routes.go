@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	app_routes "github.com/joaoribeirodasilva/teos/apps/services/app_routes"
+	"github.com/joaoribeirodasilva/teos/apps/services"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
@@ -13,13 +13,13 @@ import (
 
 func AppRoutesList(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_routes.New(services)
+	svc := services.NewAppRoutesService(payload)
 
 	docs, err := svc.List("")
 	if err != nil {
@@ -33,16 +33,16 @@ func AppRoutesList(c *gin.Context) {
 
 func AppRoutesGet(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_routes.New(services)
+	svc := services.NewAppRoutesService(payload)
 	doc := &models.AppRoute{}
 
-	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
+	if err := svc.Get(doc, "id = ?", payload.Http.Request.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
@@ -53,17 +53,17 @@ func AppRoutesGet(c *gin.Context) {
 
 func AppRoutesCreate(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_routes.New(services)
+	svc := services.NewAppRoutesService(payload)
 	doc := &models.AppRoute{}
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+	if err := payload.Http.Request.Bind(doc); err != nil {
 
 		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
 		c.AbortWithStatusJSON(int(httpError.Status), httpError)
@@ -86,18 +86,18 @@ func AppRoutesCreate(c *gin.Context) {
 
 func AppRoutesUpdate(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_routes.New(services)
+	svc := services.NewAppRoutesService(payload)
 	doc := &models.AppRoute{}
-	doc.ID = *services.Query.ID
+	doc.ID = payload.Http.Request.ID
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
+	if err := payload.Http.Request.Bind(doc); err != nil {
 
 		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
 		c.AbortWithStatusJSON(int(httpError.Status), httpError)
@@ -115,24 +115,16 @@ func AppRoutesUpdate(c *gin.Context) {
 
 func AppRoutesDelete(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := app_routes.New(services)
-	doc := &models.AppRoute{}
+	svc := services.NewAppRoutesService(payload)
 
-	if err := c.ShouldBindBodyWithJSON(doc); err != nil {
-
-		httpError := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
-		c.AbortWithStatusJSON(int(httpError.Status), httpError)
-		return
-	}
-
-	if err := svc.Delete(doc.ID); err != nil {
+	if err := svc.Delete(payload.Http.Request.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return

@@ -6,18 +6,18 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/models"
-	history "github.com/joaoribeirodasilva/teos/hist/services/history"
+	"github.com/joaoribeirodasilva/teos/hist/services"
 )
 
 func HistoryList(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := history.New(services)
+	svc := services.NewHistoryService(payload)
 
 	docs, err := svc.List("")
 	if err != nil {
@@ -31,16 +31,16 @@ func HistoryList(c *gin.Context) {
 
 func HistoryGet(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
 	}
 
-	svc := history.New(services)
+	svc := services.NewHistoryService(payload)
 	doc := &models.History{}
 
-	if err := svc.Get(doc, "id = ?", services.Query.ID); err != nil {
+	if err := svc.Get(doc, "id = ?", payload.Http.Request.ID); err != nil {
 
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return

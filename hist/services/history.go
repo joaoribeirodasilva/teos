@@ -1,4 +1,4 @@
-package histories
+package services
 
 import (
 	"errors"
@@ -7,34 +7,25 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
+	"github.com/joaoribeirodasilva/teos/common/payload"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
-	"github.com/joaoribeirodasilva/teos/common/requests"
-	"github.com/joaoribeirodasilva/teos/common/services"
-	"github.com/joaoribeirodasilva/teos/common/structures"
-	"github.com/joaoribeirodasilva/teos/common/utils/token"
 	"gorm.io/gorm"
 )
 
 type HistoryService struct {
-	services      *structures.RequestValues
-	db            *gorm.DB
-	user          *token.User
-	query         *requests.QueryString
-	sessionDb     *redisdb.RedisDB
-	permissionsDb *redisdb.RedisDB
-	historyDb     *redisdb.RedisDB
+	payload *payload.Payload
+	db      *gorm.DB
+	request *payload.HttpRequest
+	history *redisdb.RedisDB
 }
 
-func New(services *structures.RequestValues) *HistoryService {
-	s := &HistoryService{}
-	s.services = services
-	s.db = services.Services.Db.GetDatabase()
-	s.user = services.User
-	s.query = &services.Query
-	s.sessionDb = services.Services.SessionsDB
-	s.permissionsDb = services.Services.PermissionsDB
-	s.historyDb = services.Services.HistoryDB
-	return s
+func NewHistoryService(payload *payload.Payload) *HistoryService {
+	return &HistoryService{
+		payload: payload,
+		db:      payload.Services.Db.GetDatabase(),
+		request: payload.Http.Request,
+		history: payload.Services.HistoryDb,
+	}
 }
 
 // List returns a list of users from the collection
@@ -84,9 +75,9 @@ func (s *HistoryService) Get(model *models.History, filter string, args ...any) 
 
 	query := s.db.Model(model)
 	if filter == "" {
-		query.Where("id = ?", s.query.ID)
+		query.Where("id = ?", s.request.ID)
 	} else {
-		query.Where(filter, args)
+		query.Where(s.request.Query.Filter)
 	}
 
 	if err := query.First(model).Error; err != nil {
@@ -121,7 +112,7 @@ func (s *HistoryService) Create(model *models.History) *logger.HttpError {
 		return err
 	}
 
-	s.assign(model, nil, services.SVC_OPERATION_CREATE)
+	s.assign(model, nil, payload.SVC_OPERATION_CREATE)
 
 	if err := s.db.Create(model).Error; err != nil {
 
@@ -164,18 +155,18 @@ func (s *HistoryService) Validate(model *models.History) *logger.HttpError {
 	return nil
 }
 
-func (s *HistoryService) assign(to *models.History, from *models.History, operation services.Operation) {
+func (s *HistoryService) assign(to *models.History, from *models.History, operation payload.Operation) {
 
 	now := time.Now().UTC()
 
-	if operation == services.SVC_OPERATION_CREATE {
+	if operation == payload.SVC_OPERATION_CREATE {
 
-		to.CreatedBy = s.user.ID
+		to.CreatedBy = s.request.Session.Auth.UserSession.UserID
 		to.CreatedAt = now
 
-	} else if operation == services.SVC_OPERATION_DELETE {
+	} else if operation == payload.SVC_OPERATION_DELETE {
 
-		to.DeletedBy = &s.user.ID
+		to.DeletedBy = &s.request.Session.Auth.UserSession.UserID
 		to.DeletedAt = &now
 
 	} else {
@@ -186,6 +177,6 @@ func (s *HistoryService) assign(to *models.History, from *models.History, operat
 		to.JsonData = from.JsonData
 	}
 
-	to.UpdatedBy = s.user.ID
+	to.UpdatedBy = s.request.Session.Auth.UserSession.UserID
 	to.UpdatedAt = now
 }

@@ -2,6 +2,7 @@ package server
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/payload"
 )
 
@@ -18,7 +19,7 @@ func NewRouter(request *payload.Payload) *Router {
 	return r
 }
 
-func (r *Router) Variables(c *gin.Context) {
+func (r *Router) Services(c *gin.Context) {
 
 	session := &payload.SessionAuth{}
 	session.ID = 0
@@ -32,6 +33,26 @@ func (r *Router) Variables(c *gin.Context) {
 	r.Service.Http.Request.Session.Auth.UserSession = session
 
 	c.Set("service", r.Service)
+	c.Next()
+}
+
+func (r *Router) SendAuth(c *gin.Context) {
+
+	serviceInterface := c.MustGet("service")
+	services, ok := serviceInterface.(*payload.Payload)
+	if !ok {
+		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "invalid service pointer", nil, nil)
+		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
+	}
+
+	if err := services.Http.Request.Session.Auth.SetCookie(); err != nil {
+		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "failed to generate session cookie", err, nil)
+		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
+		c.Abort()
+		return
+	}
+
+	c.Next()
 }
 
 func (r *Router) IsLogged(c *gin.Context) {

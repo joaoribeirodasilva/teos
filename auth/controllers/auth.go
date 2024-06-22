@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	auth_sessions "github.com/joaoribeirodasilva/teos/auth/services/auth_sessions"
+	"github.com/joaoribeirodasilva/teos/auth/requests"
+	"github.com/joaoribeirodasilva/teos/auth/services"
 	"github.com/joaoribeirodasilva/teos/common/controllers"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 )
@@ -20,7 +21,7 @@ const (
 
 func AuthLogin(c *gin.Context) {
 
-	services, err := controllers.GetValues(c)
+	payload, err := controllers.GetPayload(c)
 	if err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
@@ -34,17 +35,11 @@ func AuthLogin(c *gin.Context) {
 		return
 	}
 
-	svc := auth_sessions.New(services)
+	svc := services.NewAuthSessionsService(payload)
 
-	auth, err := svc.Login(email, passwd)
-	if err != nil {
+	if err := svc.Login(email, passwd); err != nil {
 		c.AbortWithStatusJSON(int(err.Status), err)
 		return
-	}
-
-	if err != auth.SetToken(c) {
-		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "failed to issue the session cookie", err, nil)
-		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
 	}
 
 	c.Status(http.StatusOK)
@@ -52,19 +47,43 @@ func AuthLogin(c *gin.Context) {
 
 func AuthForgot(c *gin.Context) {
 
+	payload, err := controllers.GetPayload(c)
+	if err != nil {
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
+
+	request := requests.ForgotPassword{}
+	if err := payload.Http.Request.Bind(&request); err != nil {
+		fields := []string{"email"}
+		httpErr := logger.Error(logger.LogStatusBadRequest, &fields, "no email provided", err, nil)
+		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
+		return
+	}
+
+	svc := services.NewAuthSessionsService(payload)
+
+	if err := svc.Forgot(request.Email); err != nil {
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
+
+	/* 	request.Email = strings.TrimSpace(strings.ToLower(request.Email))
+	   	_, errMail := mail.ParseAddress(request.Email)
+	   	if errMail != nil {
+	   		fields := []string{"password"}
+	   		httpErr := logger.Error(logger.LogStatusBadRequest, &fields, "invalid email provided", errMail, nil)
+	   		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
+	   		return
+	   	} */
+
 	/* 	values, httpErr := controllers.MustGetAll(c)
 	   	if httpErr != nil {
 	   		c.AbortWithStatusJSON(httpErr.Status, httpErr)
 	   		return
 	   	}
 
-	   	request := requests.ForgotPassword{}
-	   	if err := c.ShouldBind(&request); err != nil {
-	   		fields := []string{"password"}
-	   		httpErr := logger.Error(logger.LogStatusBadRequest, &fields, "no email provided", err, nil)
-	   		c.AbortWithStatusJSON(httpErr.Status, httpErr)
-	   		return
-	   	}
+
 
 	   	request.Email = strings.TrimSpace(strings.ToLower(request.Email))
 	   	_, err := mail.ParseAddress(request.Email)
@@ -129,6 +148,26 @@ func AuthForgot(c *gin.Context) {
 }
 
 func AuthReset(c *gin.Context) {
+
+	payload, err := controllers.GetPayload(c)
+	if err != nil {
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
+
+	request := requests.ResetPassword{}
+	if err := payload.Http.Request.Bind(&request); err != nil {
+		httpErr := logger.Error(logger.LogStatusBadRequest, nil, "invalid JSON body", err, nil)
+		c.AbortWithStatusJSON(int(httpErr.Status), httpErr)
+		return
+	}
+
+	svc := services.NewAuthSessionsService(payload)
+
+	if err := svc.Reset(request.Password, request.CheckPassword); err != nil {
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
 
 	/* 	values, httpErr := controllers.MustGetAll(c)
 	   	if httpErr != nil {
@@ -264,6 +303,18 @@ func AuthReset(c *gin.Context) {
 
 func AuthLogout(c *gin.Context) {
 
+	payload, err := controllers.GetPayload(c)
+	if err != nil {
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
+
+	svc := services.NewAuthSessionsService(payload)
+
+	if err := svc.Logout(); err != nil {
+		c.AbortWithStatusJSON(int(err.Status), err)
+		return
+	}
 	/* 	values, httpErr := controllers.MustGetAll(c)
 	   	if httpErr != nil {
 	   		c.AbortWithStatusJSON(httpErr.Status, httpErr)

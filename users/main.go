@@ -7,7 +7,6 @@ import (
 
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/database"
-	"github.com/joaoribeirodasilva/teos/common/environment"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
 	"github.com/joaoribeirodasilva/teos/common/server"
@@ -24,11 +23,6 @@ func main() {
 
 	logger.SetApplication(SERVICE_NAME)
 	logger.SetCollectionName("log_logs")
-
-	env := environment.New()
-	if err := env.Read(); err != nil {
-		os.Exit(1)
-	}
 
 	logger.SetLogLevel(logger.LogLevel(env.Application.LogLevel))
 

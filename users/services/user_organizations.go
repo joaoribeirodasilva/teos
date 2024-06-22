@@ -1,4 +1,4 @@
-package auth_roles
+package services
 
 import (
 	"errors"
@@ -8,41 +8,32 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
+	"github.com/joaoribeirodasilva/teos/common/payload"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
-	"github.com/joaoribeirodasilva/teos/common/requests"
-	"github.com/joaoribeirodasilva/teos/common/services"
-	"github.com/joaoribeirodasilva/teos/common/structures"
-	"github.com/joaoribeirodasilva/teos/common/utils/token"
 	"gorm.io/gorm"
 )
 
-type AuthRolesService struct {
-	services      *structures.RequestValues
-	db            *gorm.DB
-	user          *token.User
-	query         *requests.QueryString
-	sessionDb     *redisdb.RedisDB
-	permissionsDb *redisdb.RedisDB
-	historyDb     *redisdb.RedisDB
+type UserOrganizationsService struct {
+	payload *payload.Payload
+	db      *gorm.DB
+	request *payload.HttpRequest
+	history *redisdb.RedisDB
 }
 
-func New(services *structures.RequestValues) *AuthRolesService {
-	s := &AuthRolesService{}
-	s.services = services
-	s.db = services.Services.Db.GetDatabase()
-	s.user = services.User
-	s.query = &services.Query
-	s.sessionDb = services.Services.SessionsDB
-	s.permissionsDb = services.Services.PermissionsDB
-	s.historyDb = services.Services.HistoryDB
-	return s
+func NewUserOrganizationsService(payload *payload.Payload) *UserOrganizationsService {
+	return &UserOrganizationsService{
+		payload: payload,
+		db:      payload.Services.Db.GetDatabase(),
+		request: payload.Http.Request,
+		history: payload.Services.HistoryDb,
+	}
 }
 
 // List returns a list of users from the collection
-func (s *AuthRolesService) List(filter string, args ...any) (*models.AuthRoles, *logger.HttpError) {
+func (s *UserOrganizationsService) List(filter string, args ...any) (*models.UserOrganizations, *logger.HttpError) {
 
-	model := models.AuthRole{}
-	models := models.AuthRoles{}
+	model := models.UserOrganization{}
+	models := models.UserOrganizations{}
 
 	if err := s.db.Model(&model).Where(filter, args).Count(&models.Count).Error; err != nil {
 
@@ -81,13 +72,13 @@ func (s *AuthRolesService) List(filter string, args ...any) (*models.AuthRoles, 
 }
 
 // Get returns a single user from the collection
-func (s *AuthRolesService) Get(model *models.AuthRole, filter string, args ...any) *logger.HttpError {
+func (s *UserOrganizationsService) Get(model *models.UserOrganization, filter string, args ...any) *logger.HttpError {
 
 	query := s.db.Model(model)
 	if filter == "" {
-		query.Where("id = ?", s.query.ID)
+		query.Where("id = ?", s.request.ID)
 	} else {
-		query.Where(filter, args)
+		query.Where(s.request.Query.Filter)
 	}
 
 	if err := query.First(model).Error; err != nil {
@@ -110,14 +101,13 @@ func (s *AuthRolesService) Get(model *models.AuthRole, filter string, args ...an
 			err,
 			nil,
 		)
-
 	}
 
 	return nil
 }
 
 // Create creates a new user document or returns a logger.HttpError in case of error
-func (s *AuthRolesService) Create(model *models.AuthRole) *logger.HttpError {
+func (s *UserOrganizationsService) Create(model *models.UserOrganization) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
@@ -125,13 +115,9 @@ func (s *AuthRolesService) Create(model *models.AuthRole) *logger.HttpError {
 
 	//TODO: organization config any can create user or only the organization
 
-	exists := models.AuthRole{}
+	exists := models.UserOrganization{}
 
-	if err := s.db.Where(
-		"organization_id = ? AND name = ?",
-		model.OrganizationID,
-		model.Name,
-	).First(&exists).Error; err != nil {
+	if err := s.db.Where("organization_id = ? AND user_id = ?", model.OrganizationID, model.UserID).First(&exists).Error; err != nil {
 
 		if !errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -152,9 +138,9 @@ func (s *AuthRolesService) Create(model *models.AuthRole) *logger.HttpError {
 		exists.DeletedAt = nil
 		exists.DeletedBy = nil
 
-		s.assign(&exists, model, services.SVC_OPERATION_CREATE)
+		s.assign(&exists, model, payload.SVC_OPERATION_CREATE)
 	} else {
-		s.assign(model, nil, services.SVC_OPERATION_CREATE)
+		s.assign(model, nil, payload.SVC_OPERATION_CREATE)
 	}
 
 	if err := s.db.Create(model).Error; err != nil {
@@ -172,7 +158,7 @@ func (s *AuthRolesService) Create(model *models.AuthRole) *logger.HttpError {
 }
 
 // Create updates a user document or returns a logger.HttpError in case of error
-func (s *AuthRolesService) Update(model *models.AuthRole) *logger.HttpError {
+func (s *UserOrganizationsService) Update(model *models.UserOrganization) *logger.HttpError {
 
 	if err := s.Validate(model); err != nil {
 		return err
@@ -181,12 +167,8 @@ func (s *AuthRolesService) Update(model *models.AuthRole) *logger.HttpError {
 	// Security
 	// TODO: security
 
-	exists := models.AuthRole{}
-	if err := s.db.Where(
-		"organization_id = ? AND name = ?",
-		model.OrganizationID,
-		model.Name,
-	).First(&exists).Error; err != nil {
+	exists := models.UserOrganization{}
+	if err := s.db.Where("organization_id = ? AND user_id = ?", model.OrganizationID, model.UserID).First(&exists).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -212,7 +194,7 @@ func (s *AuthRolesService) Update(model *models.AuthRole) *logger.HttpError {
 		)
 	}
 
-	s.assign(&exists, model, services.SVC_OPERATION_UPDATE)
+	s.assign(&exists, model, payload.SVC_OPERATION_UPDATE)
 
 	if err := s.db.Save(exists).Error; err != nil {
 
@@ -229,9 +211,9 @@ func (s *AuthRolesService) Update(model *models.AuthRole) *logger.HttpError {
 }
 
 // Delete deletes a user document or returns a logger.HttpError in case of error
-func (s *AuthRolesService) Delete(id uint) *logger.HttpError {
+func (s *UserOrganizationsService) Delete(id uint) *logger.HttpError {
 
-	exists := &models.AuthRole{}
+	exists := &models.UserOrganization{}
 
 	// Security
 	// TODO: security
@@ -250,6 +232,8 @@ func (s *AuthRolesService) Delete(id uint) *logger.HttpError {
 		}
 	}
 
+	s.assign(exists, nil, payload.SVC_OPERATION_UPDATE)
+
 	if err := s.db.Delete("id = ?", id).Error; err != nil {
 
 		return logger.Error(
@@ -264,7 +248,7 @@ func (s *AuthRolesService) Delete(id uint) *logger.HttpError {
 	return nil
 }
 
-func (s *AuthRolesService) Validate(model *models.AuthRole) *logger.HttpError {
+func (s *UserOrganizationsService) Validate(model *models.UserOrganization) *logger.HttpError {
 
 	validate := validator.New()
 
@@ -282,35 +266,44 @@ func (s *AuthRolesService) Validate(model *models.AuthRole) *logger.HttpError {
 		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
 	}
 
-	if err := validate.Var(model.Name, "required;gt=1"); err != nil {
-		fields := []string{"name"}
-		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid name ", err, nil)
+	userModel := models.User{}
+	if err := s.db.Model(&userModel).Where("id = ?", model.UserID).First(&userModel).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fields := []string{"userId"}
+			return logger.Error(logger.LogStatusBadRequest, &fields, "invalid userId ", err, nil)
+		}
+		return logger.Error(logger.LogStatusInternalServerError, nil, "failed to query database", err, nil)
+	}
+
+	if err := validate.Var(model.Active, "required"); err != nil {
+		fields := []string{"active"}
+		return logger.Error(logger.LogStatusBadRequest, &fields, "invalid active ", err, nil)
 	}
 
 	return nil
 }
 
-func (s *AuthRolesService) assign(to *models.AuthRole, from *models.AuthRole, operation services.Operation) {
+func (s *UserOrganizationsService) assign(to *models.UserOrganization, from *models.UserOrganization, operation payload.Operation) {
 
 	now := time.Now().UTC()
 
-	if operation == services.SVC_OPERATION_CREATE {
+	if operation == payload.SVC_OPERATION_CREATE {
 
-		to.CreatedBy = s.user.ID
+		to.CreatedBy = s.request.Session.Auth.UserSession.UserID
 		to.CreatedAt = now
 
-	} else if operation == services.SVC_OPERATION_DELETE {
+	} else if operation == payload.SVC_OPERATION_DELETE {
 
-		to.DeletedBy = &s.user.ID
+		to.DeletedBy = &s.request.Session.Auth.UserSession.UserID
 		to.DeletedAt = &now
 
 	} else {
 
 		to.OrganizationID = from.OrganizationID
-		to.Name = from.Name
-		to.Description = from.Description
+		to.UserID = from.UserID
+		to.Active = from.Active
 	}
 
-	to.UpdatedBy = s.user.ID
+	to.UpdatedBy = s.request.Session.Auth.UserSession.UserID
 	to.UpdatedAt = now
 }

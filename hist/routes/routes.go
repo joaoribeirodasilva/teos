@@ -6,8 +6,7 @@ import (
 )
 
 func RegisterRoutes(router *server.Router) {
-
-	router.Services.Gin.GET("/hist/history", router.Variables, controllers.HistoryList)
-	router.Services.Gin.GET("/hist/history/:id", router.Variables, controllers.HistoryGet)
+	router.Service.Http.Engine.GET("/hist/history", router.Services, controllers.HistoryList)
+	router.Service.Http.Engine.GET("/hist/history/:id", router.Services, controllers.HistoryGet)
 	//router.Services.Gin.POST("/hist/history", router.Variables, controllers.HistoryCreate)
 }

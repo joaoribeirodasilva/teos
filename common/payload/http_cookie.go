@@ -59,7 +59,7 @@ func (c *HttpCookie) Parse() error {
 	return nil
 }
 
-func (c *HttpCookie) Set() error {
+func (c *HttpCookie) SetCookie() error {
 
 	sub := make(map[string]interface{})
 	sub["id"] = c.UserSession.ID
