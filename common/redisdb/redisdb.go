@@ -75,7 +75,7 @@ func (r *RedisDB) Set(key string, val interface{}, ttl int) error {
 	return nil
 }
 
-func (r *RedisDB) Get(key string, val interface{}, ttl int) (*string, error) {
+func (r *RedisDB) Get(key string) (*string, error) {
 
 	result, err := r.client.Get(context.Background(), "rec").Result()
 	if err != nil {
@@ -95,4 +95,32 @@ func (r *RedisDB) Del(keys ...string) error {
 	}
 
 	return nil
+}
+
+func (r *RedisDB) MGet(prefix string) (*map[string]*string, error) {
+
+	var cursor uint64
+	ctx := context.Background()
+	items := make(map[string]*string)
+
+	for {
+		keys, cursor, err := r.client.Scan(ctx, cursor, prefix, 1000).Result()
+		if err != nil {
+			return nil, err
+		}
+
+		for _, key := range keys {
+			val, err := r.Get(key)
+			if err != nil {
+				return nil, err
+			}
+			items[key] = val
+		}
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return &items, nil
 }
