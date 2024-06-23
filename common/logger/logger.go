@@ -5,7 +5,8 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/joaoribeirodasilva/teos/common/database"
+	"github.com/google/uuid"
+	"github.com/joaoribeirodasilva/teos/common/redisdb"
 	"github.com/joaoribeirodasilva/teos/common/utils/dump"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
@@ -60,7 +61,7 @@ var (
 )
 
 type Log struct {
-	Db             *database.Db
+	Db             *redisdb.RedisDB
 	Application    string
 	CollectionName string
 	LogLevel       LogLevel
@@ -68,16 +69,17 @@ type Log struct {
 
 type LogDocument struct {
 	ID          primitive.ObjectID `json:"_id" bson:"_id"`
-	Application string             `json:"application" bson:"application"`
-	Timestamp   time.Time          `json:"timestamp" bson:"timestamp"`
-	Message     *LogMessage        `json:"message" bson:"message"`
+	Application string             `json:"application"`
+	Timestamp   time.Time          `json:"timestamp"`
+	Message     *LogMessage        `json:"message"`
 }
 
 type LogMessage struct {
-	Type    string    `json:"type" bson:"type"`
-	Fields  *[]string `json:"fields,omitempty" bson:"fields,omitempty"`
-	Message string    `json:"message" bson:"message"`
-	Data    *string   `json:"data,omitempty" bson:"data,omitempty"`
+	Time    time.Time `json:"time"`
+	Type    string    `json:"type"`
+	Fields  *[]string `json:"fields,omitempty"`
+	Message string    `json:"message"`
+	Data    *string   `json:"data,omitempty"`
 }
 
 type HttpError struct {
@@ -179,7 +181,7 @@ func GetApplication() string {
 	return Logger.Application
 }
 
-func SetDatabase(db *database.Db) {
+func SetDatabase(db *redisdb.RedisDB) {
 	Logger.Db = db
 }
 
@@ -200,6 +202,7 @@ func createMessage(typ LogTypes, mesg string, fields *[]string, data any) *LogMe
 	}
 
 	msg := LogMessage{
+		Time:    time.Now().UTC(),
 		Type:    typeNames[typ],
 		Fields:  fields,
 		Message: mesg,
@@ -213,27 +216,12 @@ func createMessage(typ LogTypes, mesg string, fields *[]string, data any) *LogMe
 
 func persist(msg LogMessage) {
 
-	/*
-		 	if Logger.Db == nil {
-				return
-			}
+	if Logger.Db == nil {
+		return
+	}
 
-			if Logger.CollectionName == "" {
-				slog.Warn("no collection name set for Logger, log persistance disabled")
-				return
-			}
-
-			coll := Logger.Db.GetDatabase().Collection(Logger.CollectionName)
-
-			doc := &LogDocument{
-				ID:          primitive.NewObjectID(),
-				Application: Logger.Application,
-				Timestamp:   time.Now().UTC(),
-				Message:     &msg,
-			}
-
-			if _, err := coll.InsertOne(Logger.Db.GetContext(), doc); err != nil {
-				slog.Error(fmt.Sprintf("failed to persist log message, ERR: %s", err.Error()))
-			}
-	*/
+	id := uuid.New()
+	if err := Logger.Db.Set(id.String(), msg, 0); err != nil {
+		slog.Error(fmt.Sprintf("failed to persist log message, ERR: %s", err.Error()))
+	}
 }

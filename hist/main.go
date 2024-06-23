@@ -49,6 +49,8 @@ func main() {
 		os.Exit(1)
 	}
 
+	logger.SetDatabase(services.Services.LogsDb)
+
 	if err := services.SetPermissionsDb(nil); err != nil {
 		logger.Error(logger.LogStatusInternalServerError, nil, "failed to start permissions database", err, nil)
 		os.Exit(1)
