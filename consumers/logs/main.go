@@ -2,12 +2,13 @@ package main
 
 import (
 	"os"
+	"time"
 
-	"github.com/joaoribeirodasilva/teos/apps/routes"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/payload"
 	"github.com/joaoribeirodasilva/teos/common/server"
+	"github.com/joaoribeirodasilva/teos/consumers/logs/routes"
 	controllerServices "github.com/joaoribeirodasilva/teos/consumers/logs/services"
 )
 
@@ -78,10 +79,18 @@ func main() {
 		os.Exit(1)
 	}
 
-	loader := controllerServices.NewRoutesService(&services)
-	if err := loader.Refresh(); err != nil {
+	loader := controllerServices.NewLogsService(&services)
+	if err := loader.Save(); err != nil {
 		os.Exit(1)
 	}
+
+	go func() {
+		logger.Info("starting log collector")
+		for {
+			loader.Save()
+			time.Sleep(1000)
+		}
+	}()
 
 	router := server.NewRouter(&services)
 	routes.RegisterRoutes(router)

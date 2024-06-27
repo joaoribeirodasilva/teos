@@ -162,6 +162,7 @@ func (s *AuthSessionsService) Login(email string, passwd string) *logger.HttpErr
 		ID:             session.ID,
 		UserID:         session.UserID,
 		OrganizationID: session.OrganizationID,
+		Email:          user.Email,
 		Name:           user.FirstName,
 		Surname:        user.Surname,
 		AvatarUrl:      user.AvatarUrl,
@@ -194,7 +195,7 @@ func (s *AuthSessionsService) Logout() *logger.HttpError {
 	//LOGOUT
 
 	exists := &models.AuthSession{}
-	if err := s.db.Where("id = ?", exists).First(&exists).Error; err != nil {
+	if err := s.db.Where("id = ?", s.payload.Http.Request.Session.Auth.UserSession.ID).First(&exists).Error; err != nil {
 
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 
@@ -219,7 +220,13 @@ func (s *AuthSessionsService) Logout() *logger.HttpError {
 		)
 	}
 
-	if err := s.db.Delete("id = ?", id).Error; err != nil {
+	now := time.Now().UTC()
+	exists.UpdatedBy = s.payload.Http.Request.Session.Auth.UserSession.UserID
+	exists.UpdatedAt = now
+	exists.DeletedBy = &s.payload.Http.Request.Session.Auth.UserSession.UserID
+	exists.DeletedAt = &now
+
+	if err := s.db.Model(&exists).Save(exists).Error; err != nil {
 
 		return logger.Error(
 			logger.LogStatusInternalServerError,
@@ -229,6 +236,8 @@ func (s *AuthSessionsService) Logout() *logger.HttpError {
 			nil,
 		)
 	}
+
+	s.payload.Http.Request.Session.Auth.UserSession = payload.EmptySession()
 
 	return nil
 }

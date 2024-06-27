@@ -1,0 +1,32 @@
+{{ define "pages/forgot"}}
+    {{ template "wrappers/header" . }}
+          <!-- Forgot Password -->
+          <div class="card">
+            <div class="card-body">
+              {{ template "components/auth_brand" . }}
+              <h4 class="mb-1">Esqueceu sua senha? 🔒</h4>
+              <p class="mb-6">Insira seu endereço de email e enviaremos uma mensagem com a instruções</p>
+              <form id="formAuthentication" class="mb-6" action="auth-reset-password-basic.html" method="GET">
+                <div class="mb-6">
+                  <label for="email" class="form-label">E-Mail</label>
+                  <input
+                    type="text"
+                    class="form-control"
+                    id="email"
+                    name="email"
+                    placeholder="Insira seu e-mail"
+                    autofocus />
+                </div>
+                <button class="btn btn-primary d-grid w-100">Enviar link de reset</button>
+              </form>
+              <div class="text-center">
+                <a href="/login" class="d-flex justify-content-center">
+                  <i class="ti ti-chevron-left scaleX-n1-rtl me-1_5"></i>
+                  Voltar para o Login
+                </a>
+              </div>
+            </div>
+          </div>
+          <!-- /Forgot Password -->
+    {{ template "wrappers/footer" . }}
+{{ end }}

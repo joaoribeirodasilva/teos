@@ -1,0 +1,50 @@
+{{ define "pages/reset" }}
+    {{ template "wrappers/header" . }}
+        <!-- Reset Password -->
+          <div class="card">
+            <div class="card-body">
+            {{ template "components/auth_brand" . }}
+              <h4 class="mb-1">Reset de Senha 🔒</h4>
+              <p class="mb-6">
+                <span class="fw-medium">Sua senha deve ser diferente das anteriores</span>
+              </p>
+              <form id="formAuthentication" action="auth-login-basic.html" method="GET">
+                <div class="mb-6 form-password-toggle">
+                  <label class="form-label" for="password">Nova Senha</label>
+                  <div class="input-group input-group-merge">
+                    <input
+                      type="password"
+                      id="password"
+                      class="form-control"
+                      name="password"
+                      placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                      aria-describedby="password" />
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                  </div>
+                </div>
+                <div class="mb-6 form-password-toggle">
+                  <label class="form-label" for="confirm-password">Confirme sua Senha</label>
+                  <div class="input-group input-group-merge">
+                    <input
+                      type="password"
+                      id="confirm-password"
+                      class="form-control"
+                      name="confirm-password"
+                      placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                      aria-describedby="password" />
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                  </div>
+                </div>
+                <button class="btn btn-primary d-grid w-100 mb-6">Salval nova senha</button>
+                <div class="text-center">
+                  <a href="/login">
+                    <i class="ti ti-chevron-left scaleX-n1-rtl me-1_5"></i>
+                    Voltar para o Login
+                  </a>
+                </div>
+              </form>
+            </div>
+          </div>
+          <!-- /Reset Password -->
+    {{ template "wrappers/footer" . }}
+{{end}}

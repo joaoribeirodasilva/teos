@@ -19,7 +19,9 @@
         "sessionid",
         "STARTSWITH",
         "Tablename",
+        "templ",
         "teos",
+        "tmpl",
         "waitg"
     ]
 }

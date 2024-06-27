@@ -1,0 +1,51 @@
+{{ define "admin/menu"}}
+        <!-- Menu -->
+
+        <aside id="layout-menu" class="layout-menu menu-vertical menu bg-menu-theme">
+          <div class="app-brand demo">
+            {{template "components/auth_logo"}}
+
+            <a href="javascript:void(0);" class="layout-menu-toggle menu-link text-large ms-auto">
+              <i class="ti menu-toggle-icon d-none d-xl-block align-middle"></i>
+              <i class="ti ti-x d-block d-xl-none ti-md align-middle"></i>
+            </a>
+          </div>
+
+          <div class="menu-inner-shadow"></div>
+          <ul class="menu-inner py-1">
+            <!-- Page -->
+            <li class="menu-item active">
+              <a href="index.html" class="menu-link">
+                <i class="menu-icon tf-icons ti ti-dashboard"></i>
+                <div data-i18n="Dashboard">Dashboard</div>
+              </a>
+            </li>
+            <li class="menu-item">
+              <a href="page-2.html" class="menu-link">
+                <i class="menu-icon tf-icons ti ti-app-window"></i>
+                <div data-i18n="Page 2">Page 2</div>
+              </a>
+            </li>
+            <li class="menu-item">
+              <a href="javascript:void(0);" class="menu-link menu-toggle">
+                <i class="menu-icon tf-icons ti ti-table"></i>
+                <div data-i18n="Advanced">Avançado</div>
+                <div class="badge bg-danger rounded-pill ms-auto">5</div>
+              </a>
+              <ul class="menu-sub">
+                <li class="menu-item">
+                  <a href="index.html" class="menu-link">
+                    <div data-i18n="Analytics">Analytics</div>
+                  </a>
+                </li>
+                <li class="menu-item">
+                  <a href="dashboards-crm.html" class="menu-link">
+                    <div data-i18n="CRM">CRM</div>
+                  </a>
+                </li>
+              </ul>
+            </li>
+          </ul>
+        </aside>
+        <!-- / Menu -->
+{{ end}}

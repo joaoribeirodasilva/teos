@@ -21,23 +21,10 @@ func NewRouter(request *payload.Payload) *Router {
 
 func (r *Router) Services(c *gin.Context) {
 
-	session := &payload.SessionAuth{}
-	session.ID = 0
-	session.OrganizationID = 1
-	session.UserID = 1
-	session.Name = "Sistema"
-	session.Surname = "Teos"
-	session.Email = "teos@teos.com.br"
-	session.AvatarUrl = ""
-
 	if err := r.Service.Http.Parse(c); err != nil {
 		httpErr := logger.Error(logger.LogStatusInternalServerError, nil, "failed to parse request", err, nil)
 		c.AbortWithStatusJSON(int(httpErr.Status), httpErr.Error())
 		return
-	}
-
-	if r.Service.Http.Request.Session.Auth.UserSession == nil {
-		r.Service.Http.Request.Session.Auth.UserSession = session
 	}
 
 	c.Set("service", r.Service)

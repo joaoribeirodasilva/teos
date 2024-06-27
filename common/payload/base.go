@@ -183,7 +183,7 @@ func (p *Payload) SetHttp(engine *gin.Engine) error {
 		return fmt.Errorf("payload has no config")
 	}
 
-	p.Http = NewHttp(p.Config, engine)
+	p.Http = NewHttp(p.Config, engine, p.Services.PermissionsDb, p.Services.SessionsDb)
 
 	return nil
 }

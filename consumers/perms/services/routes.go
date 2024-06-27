@@ -1,14 +1,13 @@
 package services
 
 import (
-	"crypto/md5"
 	"errors"
-	"fmt"
 
 	"github.com/joaoribeirodasilva/teos/common/logger"
 	"github.com/joaoribeirodasilva/teos/common/models"
 	"github.com/joaoribeirodasilva/teos/common/payload"
 	"github.com/joaoribeirodasilva/teos/common/redisdb"
+	"github.com/joaoribeirodasilva/teos/common/utils/permission_key"
 
 	"gorm.io/gorm"
 )
@@ -50,8 +49,7 @@ func (s *RoutesService) Refresh() *logger.HttpError {
 	logger.Info("found %d active routes", len(*models.Docs))
 	for _, model := range *models.Docs {
 
-		keyData := fmt.Sprintf("%s_%s_%s", model.App, model.Method, model.Uri)
-		key := "perm_" + fmt.Sprintf("%x", md5.Sum([]byte(keyData)))
+		key := permission_key.MakePermissionKey(model.Method, model.Uri)
 
 		if err := s.payload.Services.PermissionsDb.Set(key, model, 0); err != nil {
 			return logger.Error(

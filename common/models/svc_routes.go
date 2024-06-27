@@ -6,7 +6,7 @@ import (
 
 type SvcRoute struct {
 	ID        uint       `json:"id" gorm:"column:id;type:uint;primaryKey"`
-	App       string     `json:"name" gorm:"column:name;type:string;size:255;not null;"`
+	App       string     `json:"app" gorm:"column:app;type:string;size:255;not null;"`
 	Method    string     `json:"method" gorm:"column:method;type:string;size:255;not null;"`
 	Uri       string     `json:"uri" gorm:"column:uri;type:string;size:255;not null;"`
 	Open      uint       `json:"open" gorm:"column:open;type:int;default:0"`
@@ -28,5 +28,5 @@ func (m *SvcRoute) GetID() uint {
 }
 
 func (m *SvcRoute) TableName() string {
-	return "reset_types"
+	return "svc_route"
 }

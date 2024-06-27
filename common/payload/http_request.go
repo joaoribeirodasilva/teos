@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/joaoribeirodasilva/teos/common/configuration"
+	"github.com/joaoribeirodasilva/teos/common/redisdb"
 )
 
 type HttpRequest struct {
@@ -16,12 +17,15 @@ type HttpRequest struct {
 	ID      uint
 }
 
-func NewRequest(conf *configuration.Config, ctx *gin.Context) *HttpRequest {
+func NewRequest(conf *configuration.Config, ctx *gin.Context, permissionsDb *redisdb.RedisDB, sessionsDb *redisdb.RedisDB) *HttpRequest {
+
+	method := ctx.Request.Method
+	route := ctx.FullPath()
 
 	req := &HttpRequest{
 		ctx:     ctx,
 		conf:    conf,
-		Session: NewHttpSession(conf, ctx),
+		Session: NewHttpSession(conf, ctx, permissionsDb, sessionsDb, method, route),
 		Query:   NewHttpQuery(ctx),
 	}
 

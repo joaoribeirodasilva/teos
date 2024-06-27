@@ -1,0 +1,86 @@
+{{ define "pages/signup" }}
+    {{ template "wrappers/header" . }}
+          <!-- Register Card -->
+          <div class="card">
+            <div class="card-body">
+              {{ template "components/auth_brand" . }}
+              <h4 class="mb-1">Sua aventura começa aqui 🚀</h4>
+              <p class="mb-6">Trabalhe e estude de uma forma simples e divertida!</p>
+
+              <form id="formAuthentication" class="mb-6" action="index.html" method="GET">
+                <div class="mb-6">
+                  <label for="email" class="form-label">E-Mail</label>
+                  <input type="text" class="form-control" id="email" name="email" placeholder="Insira seu E-Mail" />
+                </div>
+                <div class="mb-6 form-password-toggle">
+                  <label class="form-label" for="password">Senha</label>
+                  <div class="input-group input-group-merge">
+                    <input
+                      type="password"
+                      id="password"
+                      class="form-control"
+                      name="password"
+                      placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                      aria-describedby="password" />
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                  </div>
+                </div>
+                <div class="mb-6 form-password-toggle">
+                  <label class="form-label" for="password-conf">Confirme sua senha</label>
+                  <div class="input-group input-group-merge">
+                    <input
+                      type="password"
+                      id="password-conf"
+                      class="form-control"
+                      name="password_conf"
+                      placeholder="&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;&#xb7;"
+                      aria-describedby="password-conf" />
+                    <span class="input-group-text cursor-pointer"><i class="ti ti-eye-off"></i></span>
+                  </div>
+                </div>
+
+                <div class="my-8">
+                  <div class="form-check mb-0 ms-2">
+                    <input class="form-check-input" type="checkbox" id="terms-conditions" name="terms" />
+                    <label class="form-check-label" for="terms-conditions">
+                      Eu concordo com os
+                      <a href="javascript:void(0);">termos & política de privacidade</a>
+                    </label>
+                  </div>
+                </div>
+                <button class="btn btn-primary d-grid w-100">Criar conta</button>
+              </form>
+
+              <p class="text-center">
+                <span>Já possui uma conta?</span>
+                <a href="/login">
+                  <span>Login</span>
+                </a>
+              </p>
+
+              <div class="divider my-6">
+                <div class="divider-text">or</div>
+              </div>
+
+              <div class="d-flex justify-content-center">
+                <a href="javascript:;" class="btn btn-sm btn-icon rounded-pill btn-text-facebook me-1_5">
+                  <i class="tf-icons ti ti-brand-facebook-filled"></i>
+                </a>
+
+                <a href="javascript:;" class="btn btn-sm btn-icon rounded-pill btn-text-twitter me-1_5">
+                  <i class="tf-icons ti ti-brand-twitter-filled"></i>
+                </a>
+
+                <a href="javascript:;" class="btn btn-sm btn-icon rounded-pill btn-text-github me-1_5">
+                  <i class="tf-icons ti ti-brand-github-filled"></i>
+                </a>
+
+                <a href="javascript:;" class="btn btn-sm btn-icon rounded-pill btn-text-google-plus">
+                  <i class="tf-icons ti ti-brand-google-filled"></i>
+                </a>
+              </div>
+            </div>
+          </div>
+          <!-- Register Card -->
+    {{ template "wrappers/footer" . }}
+{{ end }}

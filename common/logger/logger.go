@@ -76,6 +76,7 @@ type LogDocument struct {
 
 type LogMessage struct {
 	Time    time.Time `json:"time"`
+	App     string    `json:"app"`
 	Type    string    `json:"type"`
 	Fields  *[]string `json:"fields,omitempty"`
 	Message string    `json:"message"`
@@ -203,6 +204,7 @@ func createMessage(typ LogTypes, mesg string, fields *[]string, data any) *LogMe
 
 	msg := LogMessage{
 		Time:    time.Now().UTC(),
+		App:     Logger.Application,
 		Type:    typeNames[typ],
 		Fields:  fields,
 		Message: mesg,

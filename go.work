@@ -10,4 +10,5 @@ use (
 	./consumers/perms
 	./test
 	./users
+	./web
 )

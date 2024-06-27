@@ -70,8 +70,8 @@ func (f *Filter) Parse() error {
 	query := f.ctx.Request.URL.Query()
 
 	if !query.Has("deleted_by") && !query.Has("deleted_at") {
-		query.Add("deleted_at", "NULL")
-		query.Add("deleted_by", "NULL")
+		query.Add("deleted_at", "eq,NULL")
+		query.Add("deleted_by", "eq,NULL")
 	}
 
 	if err := f.parseValues(query); err != nil {

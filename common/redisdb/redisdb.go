@@ -77,7 +77,7 @@ func (r *RedisDB) Set(key string, val interface{}, ttl int) error {
 
 func (r *RedisDB) Get(key string) (*string, error) {
 
-	result, err := r.client.Get(context.Background(), "rec").Result()
+	result, err := r.client.Get(context.Background(), key).Result()
 	if err != nil {
 		slog.Error(fmt.Sprintf("[COMMON::REDISDB::Get] failed to set to redis server on '%s'. ERR: %s", r.addr, err.Error()))
 		return nil, err
